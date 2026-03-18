@@ -1,0 +1,116 @@
+import { NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function randomInviteCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "";
+  for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+export async function POST(request: Request) {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const description =
+    typeof body.description === "string" ? body.description.trim() : null;
+  const goal_type = typeof body.goal_type === "string" ? body.goal_type : "custom";
+  const duration_days =
+    typeof body.duration_days === "number" ? body.duration_days : 0;
+  const start_date = typeof body.start_date === "string" ? body.start_date : "";
+
+  if (!title) {
+    return NextResponse.json(
+      { error: "Challenge title is required." },
+      { status: 400 }
+    );
+  }
+  if (![7, 14, 21, 30].includes(duration_days)) {
+    return NextResponse.json(
+      { error: "Duration must be 7, 14, 21, or 30 days." },
+      { status: 400 }
+    );
+  }
+  if (!start_date) {
+    return NextResponse.json({ error: "Start date is required." }, { status: 400 });
+  }
+
+  const start = new Date(`${start_date}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime())) {
+    return NextResponse.json({ error: "Invalid start date." }, { status: 400 });
+  }
+  const end = addDays(start, duration_days - 1);
+
+  // Retry a few times in case invite_code collides.
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const invite_code = randomInviteCode();
+
+    const { data: created, error: createError } = await supabase
+      .from("challenges")
+      .insert({
+        title,
+        description,
+        goal_type,
+        duration_days,
+        start_date,
+        end_date: end.toISOString().slice(0, 10),
+        created_by: user.id,
+        invite_code
+      })
+      .select("id, invite_code")
+      .single();
+
+    if (createError) {
+      lastError = createError;
+      const isDuplicate =
+        createError.code === "23505" ||
+        createError.message.toLowerCase().includes("duplicate");
+      if (isDuplicate) continue;
+
+      return NextResponse.json(
+        { error: "Could not create challenge." },
+        { status: 500 }
+      );
+    }
+
+    const { error: memberError } = await supabase.from("challenge_members").insert({
+      challenge_id: created.id,
+      user_id: user.id,
+      role: "creator"
+    });
+
+    if (memberError) {
+      return NextResponse.json(
+        { error: "Challenge created but membership failed." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      { challenge_id: created.id, invite_code: created.invite_code },
+      { status: 200 }
+    );
+  }
+
+  console.error(lastError);
+  return NextResponse.json(
+    { error: "Could not generate invite code. Try again." },
+    { status: 500 }
+  );
+}
+
