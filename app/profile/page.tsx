@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProfileAvatarClient } from "./ProfileAvatarClient";
+import FriendRequestsClient from "./FriendRequestsClient";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,53 @@ export default async function ProfilePage() {
         end_date: m.challenges?.end_date ?? null
       }))
       .filter((c) => c.id) ?? [];
+
+  // Pending friend requests (to current user)
+  let pendingRequests: {
+    id: string;
+    fromUser: {
+      id: string;
+      username: string;
+      displayName: string | null;
+      avatarUrl: string | null;
+    };
+  }[] = [];
+
+  const { data: requestRows, error: requestError } = await supabase
+    .from("friend_requests")
+    .select("id, from_user_id")
+    .eq("to_user_id", user.id)
+    .eq("status", "pending");
+
+  if (!requestError && requestRows && requestRows.length > 0) {
+    const fromIds = requestRows.map((r: any) => r.from_user_id);
+    const { data: fromUsers, error: fromUsersError } = await supabase
+      .from("users")
+      .select("id, username, display_name, avatar_url")
+      .in("id", fromIds);
+
+    if (!fromUsersError && fromUsers) {
+      const byId = new Map(
+        fromUsers.map((u: any) => [
+          u.id as string,
+          {
+            id: u.id as string,
+            username: (u.username ?? "") as string,
+            displayName: (u.display_name ?? null) as string | null,
+            avatarUrl: (u.avatar_url ?? null) as string | null
+          }
+        ])
+      );
+
+      pendingRequests = requestRows
+        .map((r: any) => {
+          const from = byId.get(r.from_user_id as string);
+          if (!from) return null;
+          return { id: r.id as string, fromUser: from };
+        })
+        .filter(Boolean) as any;
+    }
+  }
 
   const today = new Date();
   const sevenDaysAgo = new Date(
@@ -195,6 +243,14 @@ export default async function ProfilePage() {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* Friend Requests */}
+        <section className="mt-8">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+            Friend Requests
+          </h2>
+          <FriendRequestsClient initialRequests={pendingRequests} />
         </section>
 
         {/* Weekly consistency */}

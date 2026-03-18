@@ -1,0 +1,93 @@
+"use client";
+
+import { useState } from "react";
+
+export default function AddFriendModal(props: {
+  open: boolean;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [username, setUsername] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "sent">(
+    "idle"
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  if (!props.open) return null;
+
+  async function send() {
+    const cleaned = username.trim().toLowerCase().replace(/\s+/g, "");
+    if (!cleaned) {
+      setError("Type a username first.");
+      setStatus("error");
+      return;
+    }
+    setError(null);
+    setStatus("loading");
+
+    const res = await fetch("/api/friends/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: cleaned })
+    }).catch(() => null);
+
+    if (!res) {
+      setError("Network error. Please try again.");
+      setStatus("error");
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Could not send request. Try again.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("sent");
+    props.onSent();
+    setTimeout(() => {
+      setUsername("");
+      setStatus("idle");
+      props.onClose();
+    }, 350);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <button
+        aria-label="Close"
+        className="absolute inset-0 bg-black/60"
+        onClick={props.onClose}
+      />
+
+      <div className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-md rounded-t-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-5">
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#2A2A2A]" />
+        <h3 className="text-lg font-black tracking-tight">Add a Friend</h3>
+        <p className="mt-1 text-sm text-[#888888]">
+          Send a challenge request by username.
+        </p>
+
+        <div className="mt-4 space-y-2">
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="e.g. ali_works"
+            autoCapitalize="none"
+            autoCorrect="off"
+            className="w-full rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-4 text-sm outline-none focus:border-[#00FF88]"
+          />
+          {error && <p className="text-sm text-[#FF3B3B]">{error}</p>}
+          <button
+            onClick={send}
+            disabled={status === "loading"}
+            className="w-full rounded-2xl bg-[#00FF88] px-4 py-4 text-sm font-semibold text-black disabled:opacity-70"
+          >
+            {status === "loading" ? "Sending..." : "Send Request"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

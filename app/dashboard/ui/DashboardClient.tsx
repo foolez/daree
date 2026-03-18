@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import AddFriendModal from "./AddFriendModal";
 
 type Profile = {
   id: string;
@@ -250,6 +251,7 @@ export function DashboardClient(props: {
 }) {
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
+  const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
   const [installBanner, setInstallBanner] = useState(false);
   const installEventRef = useRef<any>(null);
@@ -353,23 +355,32 @@ export function DashboardClient(props: {
         }`}
       >
         <header className="flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="h-8 w-8 overflow-hidden rounded-full border border-white/15 bg-black p-0.5">
-              <Image
-                src="/logo.png"
-                alt="Logo"
-                width={32}
-                height={32}
-                className="h-full w-full rounded-full object-cover"
-              />
-            </div>
+          <div className="flex items-center gap-3">
+            <Link href="/profile" aria-label="Go to profile">
+              <div className="h-8 w-8 overflow-hidden rounded-full border border-white/15 bg-[#1A1A1A] p-0.5">
+                {props.profile.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={props.profile.avatarUrl}
+                    alt="Profile avatar"
+                    width={32}
+                    height={32}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-white/5 text-[#FFFFFF]">
+                    <IconUser className="h-4 w-4" />
+                  </div>
+                )}
+              </div>
+            </Link>
             <div className="text-left">
               <div className="text-base font-black tracking-tight">Daree</div>
               <div className="text-xs text-[#888888]">
                 Hey, {greetingName} 👊
               </div>
             </div>
-          </Link>
+          </div>
 
           <Link
             href="/notifications"
@@ -424,12 +435,21 @@ export function DashboardClient(props: {
             <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
               Active dares
             </h2>
-            <button
-              onClick={() => setJoinOpen(true)}
-              className="rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-white"
-            >
-              Join
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAddFriendOpen(true)}
+                className="rounded-xl border border-[#00FF88]/40 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-[#00FF88] transition active:scale-[0.99]"
+              >
+                + Add Friend
+              </button>
+              <button
+                onClick={() => setJoinOpen(true)}
+                className="rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-white"
+              >
+                Join
+              </button>
+            </div>
           </div>
 
           {!hasChallenges ? (
@@ -593,6 +613,14 @@ export function DashboardClient(props: {
         onClose={() => setJoinOpen(false)}
         onJoined={(challengeId) => {
           window.location.href = `/challenge/${challengeId}`;
+        }}
+      />
+
+      <AddFriendModal
+        open={addFriendOpen}
+        onClose={() => setAddFriendOpen(false)}
+        onSent={() => {
+          // no-op for now; modal closes itself
         }}
       />
     </main>
