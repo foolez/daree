@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -9,6 +10,7 @@ type Profile = {
   id: string;
   username: string;
   displayName: string;
+  avatarUrl: string | null;
 };
 
 type ChallengeCard = {
@@ -256,6 +258,8 @@ export function DashboardClient(props: {
   const hasChallenges = challenges.length > 0;
 
   const greetingName = props.profile.displayName || props.profile.username;
+  const pathname = usePathname();
+  const onProfile = pathname.startsWith("/profile");
 
   useEffect(() => {
     // PWA install prompt after 2 visits.
@@ -349,23 +353,23 @@ export function DashboardClient(props: {
         }`}
       >
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className="h-10 w-10 overflow-hidden rounded-full border border-white/15 bg-black p-0.5">
               <Image
-                src="/logo-new.png"
+                src="/logo.png"
                 alt="Logo"
                 width={40}
                 height={40}
                 className="h-full w-full rounded-full object-cover"
               />
             </div>
-            <div>
+            <div className="text-left">
               <div className="text-base font-black tracking-tight">Daree</div>
               <div className="text-xs text-[#888888]">
                 Hey, {greetingName} 👊
               </div>
             </div>
-          </div>
+          </Link>
 
           <Link
             href="/notifications"
@@ -546,10 +550,23 @@ export function DashboardClient(props: {
 
           <Link
             href="/profile"
-            className="flex flex-col items-center gap-1 text-[#888888]"
+            className={`flex flex-col items-center gap-1 ${
+              onProfile ? "text-[#00FF88]" : "text-[#888888]"
+            }`}
             aria-label="Profile"
           >
-            <IconUser className="h-6 w-6" />
+            {props.profile.avatarUrl ? (
+              <span className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={props.profile.avatarUrl}
+                  alt="Profile avatar"
+                  className="h-full w-full object-cover"
+                />
+              </span>
+            ) : (
+              <IconUser className="h-6 w-6" />
+            )}
           </Link>
         </div>
       </nav>

@@ -104,15 +104,18 @@ export default function HomePage() {
         {/* Top nav */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
+            <a
+              href="/dashboard"
+              className="h-9 w-9 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5"
+            >
               <Image
-                src="/logo-new.png"
+                src="/logo.png"
                 alt="Logo"
                 width={36}
                 height={36}
                 className="h-full w-full rounded-full object-cover"
               />
-            </div>
+            </a>
             <div className="flex flex-col leading-tight">
               <span className="text-base font-semibold tracking-tight">
                 Daree

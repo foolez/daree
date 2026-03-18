@@ -13,7 +13,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("id, username, display_name")
+    .select("id, username, display_name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -62,7 +62,8 @@ export default async function DashboardPage() {
       profile={{
         id: profile.id,
         username: profile.username,
-        displayName: profile.display_name
+        displayName: profile.display_name,
+        avatarUrl: profile.avatar_url ?? null
       }}
       initialChallenges={challenges}
       initialUnreadCount={unreadCount ?? 0}
