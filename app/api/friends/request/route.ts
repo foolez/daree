@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+function normalizeUsername(raw: string) {
+  const typedName = raw.replace(/^@/, "").trim();
+  const searchTerm = typedName.toLowerCase().replace(/\s+/g, "");
+  return { typedName, searchTerm };
+}
+
+function looksLikeMissingColumn(message: string | null | undefined) {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return m.includes("does not exist") || m.includes("column") && m.includes("does not exist");
+}
+
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
+
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -15,49 +28,39 @@ export async function POST(request: Request) {
   const usernameRaw =
     typeof body.username === "string" ? body.username.trim() : "";
 
-  // Normalize:
-  // - allow "@Ahmet"
-  // - ignore whitespace differences
-  // - do case-insensitive lookup
-  const username = usernameRaw
-    .replace(/^@/, "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
+  const { typedName, searchTerm } = normalizeUsername(usernameRaw);
 
   console.log("[friends/request] lookup", {
-    usernameRaw,
-    username,
+    typedName,
+    searchTerm,
     from_user_id: user.id
   });
 
-  if (!username) {
-    return NextResponse.json({ error: "Username is required." }, { status: 400 });
+  if (!typedName || !searchTerm) {
+    return NextResponse.json(
+      { error: "Username is required." },
+      { status: 400 }
+    );
   }
 
-  const { data: target, error: targetError } = await supabase
+  // EXACT query logic you requested:
+  // supabase.from('users').select('id, username').ilike('username', searchTerm).single()
+  const { data: target, error: lookupError } = await supabase
     .from("users")
     .select("id, username")
-    // usernames should be lowercased on insert, but keep lookup case-insensitive
-    .ilike("username", username)
-    .maybeSingle();
+    .ilike("username", searchTerm)
+    .single();
 
   console.log("[friends/request] target", {
     found: !!target,
     targetId: target?.id ?? null,
     targetUsername: target?.username ?? null,
-    error: targetError?.message ?? null
+    error: lookupError?.message ?? null
   });
 
-  if (targetError) {
+  if (!target || lookupError) {
     return NextResponse.json(
-      { error: "Could not find user." },
-      { status: 500 }
-    );
-  }
-
-  if (!target) {
-    return NextResponse.json(
-      { error: "User not found. Check the spelling." },
+      { error: `User '${typedName}' not found in database.` },
       { status: 404 }
     );
   }
@@ -69,56 +72,71 @@ export async function POST(request: Request) {
     );
   }
 
-  // Prevent duplicates (any status, same direction) to avoid unique constraint errors.
-  const { data: existingSame } = await supabase
-    .from("friend_requests")
-    .select("id,status")
-    .eq("from_user_id", user.id)
-    .eq("to_user_id", target.id)
-    .maybeSingle();
+  const candidates: Array<{ sender: string; receiver: string }> = [
+    { sender: "from_user_id", receiver: "to_user_id" },
+    { sender: "sender_id", receiver: "receiver_id" }
+  ];
 
-  const { data: existingOther } = await supabase
-    .from("friend_requests")
-    .select("id,status")
-    .eq("from_user_id", target.id)
-    .eq("to_user_id", user.id)
-    .maybeSingle();
+  let columns: { sender: string; receiver: string } = candidates[0];
+  let existingSame: any = null;
+  let existingOther: any = null;
+
+  for (const c of candidates) {
+    const { data: same, error: sameErr } = await supabase
+      .from("friend_requests")
+      .select("id,status")
+      .eq(c.sender, user.id)
+      .eq(c.receiver, target.id)
+      .maybeSingle();
+
+    const { data: other, error: otherErr } = await supabase
+      .from("friend_requests")
+      .select("id,status")
+      .eq(c.sender, target.id)
+      .eq(c.receiver, user.id)
+      .maybeSingle();
+
+    if (sameErr || otherErr) {
+      if (looksLikeMissingColumn(sameErr?.message) || looksLikeMissingColumn(otherErr?.message)) {
+        continue;
+      }
+      return NextResponse.json(
+        { error: "Could not validate existing friend requests." },
+        { status: 500 }
+      );
+    }
+
+    existingSame = same;
+    existingOther = other;
+    columns = c;
+    break;
+  }
 
   if (existingSame) {
-    if (existingSame.status === "pending") {
-      return NextResponse.json(
-        { error: "You already sent a pending request to this user." },
-        { status: 409 }
-      );
-    }
+    return NextResponse.json(
+      { error: "A friend request already exists between you two." },
+      { status: 409 }
+    );
+  }
+  if (existingOther) {
     return NextResponse.json(
       { error: "A friend request already exists between you two." },
       { status: 409 }
     );
   }
 
-  if (existingOther) {
-    if (existingOther.status === "pending") {
-      return NextResponse.json(
-        { error: "This user already has a pending request for you." },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json(
-      { error: "A friend request already exists between you two." },
-      { status: 409 }
-    );
-  }
+  const payload: any = {
+    status: "pending",
+    [columns.sender]: user.id,
+    [columns.receiver]: target.id
+  };
 
   const { error: insertError } = await supabase
     .from("friend_requests")
-    .insert({
-      from_user_id: user.id,
-      to_user_id: target.id,
-      status: "pending"
-    });
+    .insert(payload);
 
   if (insertError) {
+    // If we guessed wrong column names, fail gracefully.
     return NextResponse.json(
       { error: insertError.message || "Could not send request." },
       { status: 500 }
@@ -126,7 +144,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(
-    { success: true, message: "Request sent! 🚀" },
+    { success: true, message: `Request sent to ${typedName}! 🚀` },
     { status: 200 }
   );
 }

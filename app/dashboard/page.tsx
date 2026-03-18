@@ -169,19 +169,21 @@ export default async function DashboardPage() {
     .eq("is_read", false);
 
   return (
-    <DashboardClient
-      profile={{
-        id: profile.id,
-        username: profile.username,
-        displayName: profile.display_name,
-        avatarUrl: profile.avatar_url ?? null
-      }}
-      initialChallenges={challenges}
-      initialUnreadCount={unreadCount ?? 0}
-      youPostedToday={youPostedToday}
-      friends={friends}
-      globalTop5={globalTop5}
-    />
+    <div className="max-w-md mx-auto">
+      <DashboardClient
+        profile={{
+          id: profile.id,
+          username: profile.username,
+          displayName: profile.display_name,
+          avatarUrl: profile.avatar_url ?? null
+        }}
+        initialChallenges={challenges}
+        initialUnreadCount={unreadCount ?? 0}
+        youPostedToday={youPostedToday}
+        friends={friends}
+        globalTop5={globalTop5}
+      />
+    </div>
   );
 }
 

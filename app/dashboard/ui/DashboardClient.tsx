@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import AddFriendModal from "./AddFriendModal";
 
 type Profile = {
   id: string;
@@ -270,7 +269,6 @@ export function DashboardClient(props: {
 }) {
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
-  const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
   const [installBanner, setInstallBanner] = useState(false);
   const installEventRef = useRef<any>(null);
@@ -298,6 +296,56 @@ export function DashboardClient(props: {
   const mm = Math.floor((remainingSeconds % 3600) / 60);
   const ss = remainingSeconds % 60;
   const secured = props.youPostedToday;
+
+  // Inline friend request (mobile-friendly)
+  const [friendSearch, setFriendSearch] = useState("");
+  const [friendSending, setFriendSending] = useState(false);
+  const [friendFeedback, setFriendFeedback] = useState<{
+    kind: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  async function sendFriendRequest() {
+    const typed = friendSearch.trim();
+    if (!typed) {
+      setFriendFeedback({ kind: "error", text: "Type a username first." });
+      return;
+    }
+
+    setFriendSending(true);
+    setFriendFeedback(null);
+
+    const res = await fetch("/api/friends/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: typed })
+    }).catch(() => null);
+
+    if (!res) {
+      setFriendSending(false);
+      setFriendFeedback({
+        kind: "error",
+        text: "Error: Network error. Please try again."
+      });
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data.error ?? "Error.";
+      setFriendSending(false);
+      setFriendFeedback({ kind: "error", text: msg });
+      return;
+    }
+
+    setFriendSending(false);
+    setFriendSearch("");
+    setFriendFeedback({
+      kind: "success",
+      text: data.message ?? "Request sent! 🚀"
+    });
+  }
 
   useEffect(() => {
     // PWA install prompt after 2 visits.
@@ -437,7 +485,7 @@ export function DashboardClient(props: {
         {/* Doom Clock + Slack Watch */}
         <section className="mt-4 space-y-2">
           <div
-            className={`rounded-2xl border p-3 ${
+            className={`h-24 max-w-md mx-auto rounded-2xl border p-2 overflow-hidden ${
               secured
                 ? "border-[#00FF88]/40 bg-[#030B06]"
                 : "border-[#FF6B35]/40 bg-[#0F0704]"
@@ -474,17 +522,46 @@ export function DashboardClient(props: {
             </div>
           </div>
 
-            <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
               Slack watch
             </h2>
-            <button
-              onClick={() => setAddFriendOpen(true)}
-                className="rounded-xl border border-[#00FF88]/40 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-[#00FF88] transition active:scale-[0.99]"
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendFriendRequest().catch(() => {});
+              }}
             >
-              + Add Friend
-            </button>
+              <input
+                value={friendSearch}
+                onChange={(e) => setFriendSearch(e.target.value)}
+                placeholder="username"
+                className="w-28 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-[11px] text-white outline-none focus:border-[#00FF88]"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <button
+                type="submit"
+                disabled={friendSending}
+                className="rounded-xl border border-[#00FF88]/40 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-[#00FF88] transition active:scale-[0.99] disabled:opacity-60"
+              >
+                {friendSending ? "Adding…" : "Add"}
+              </button>
+            </form>
           </div>
+
+          {friendFeedback && (
+            <div
+              className={`-mt-1 text-[11px] font-semibold ${
+                friendFeedback.kind === "success"
+                  ? "text-[#00FF88]"
+                  : "text-[#FF3B3B]"
+              }`}
+            >
+              {friendFeedback.text}
+            </div>
+          )}
 
           <div className="flex gap-3 overflow-x-auto pb-2">
             {props.friends.length === 0 ? (
@@ -809,14 +886,6 @@ export function DashboardClient(props: {
         onClose={() => setJoinOpen(false)}
         onJoined={(challengeId) => {
           window.location.href = `/challenge/${challengeId}`;
-        }}
-      />
-
-      <AddFriendModal
-        open={addFriendOpen}
-        onClose={() => setAddFriendOpen(false)}
-        onSent={() => {
-          // no-op for now; modal closes itself
         }}
       />
     </main>
