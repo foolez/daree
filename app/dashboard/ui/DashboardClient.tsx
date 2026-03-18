@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -350,10 +351,9 @@ export function DashboardClient(props: {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt=""
+              <Image
+                src="/logo-new.png"
+                alt="Logo"
                 width={40}
                 height={40}
                 className="h-full w-full rounded-full object-cover"

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -82,10 +83,9 @@ export function LoginClient() {
         <div className="mt-8 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-5">
           <div className="flex flex-col items-center text-center">
             <div className="h-16 w-16 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt=""
+              <Image
+                src="/logo-new.png"
+                alt="Logo"
                 width={64}
                 height={64}
                 className="h-full w-full rounded-full object-cover"

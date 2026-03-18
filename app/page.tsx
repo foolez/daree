@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -104,10 +105,9 @@ export default function HomePage() {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt=""
+              <Image
+                src="/logo-new.png"
+                alt="Logo"
                 width={36}
                 height={36}
                 className="h-full w-full rounded-full object-cover"
@@ -539,10 +539,9 @@ export default function HomePage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo.png"
-                  alt=""
+                <Image
+                  src="/logo-new.png"
+                  alt="Logo"
                   width={28}
                   height={28}
                   className="h-full w-full rounded-full object-cover"
