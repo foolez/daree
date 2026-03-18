@@ -12,10 +12,20 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const username =
-    typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+  const usernameRaw =
+    typeof body.username === "string" ? body.username.trim() : "";
+
+  // Normalize:
+  // - allow "@Ahmet"
+  // - ignore whitespace differences
+  // - do case-insensitive lookup
+  const username = usernameRaw
+    .replace(/^@/, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
 
   console.log("[friends/request] lookup", {
+    usernameRaw,
     username,
     from_user_id: user.id
   });
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
 
   if (target.id === user.id) {
     return NextResponse.json(
-      { error: "You can't add yourself!" },
+      { error: "You can't add yourself, bro! 😂" },
       { status: 400 }
     );
   }
@@ -116,7 +126,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(
-    { success: true, message: `Request sent to ${target.username}! 🔥` },
+    { success: true, message: "Request sent! 🚀" },
     { status: 200 }
   );
 }
