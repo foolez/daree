@@ -46,15 +46,15 @@ export default function FriendRequestsClient({
   ) {
     const { data: reqRows, error: reqErr } = await supabase
       .from("friend_requests")
-      .select("id, from_user_id")
-      .eq("to_user_id", currentUserId)
+      .select("id, sender_id")
+      .eq("receiver_id", currentUserId)
       .eq("status", "pending");
 
     if (reqErr) throw reqErr;
     const pendingRows = reqRows ?? [];
 
     const fromIds = pendingRows
-      .map((r: any) => r.from_user_id as string)
+      .map((r: any) => r.sender_id as string)
       .filter(Boolean);
 
     if (fromIds.length === 0) return [];
@@ -80,7 +80,7 @@ export default function FriendRequestsClient({
 
     return pendingRows
       .map((r: any) => {
-        const from = byId.get(r.from_user_id as string);
+        const from = byId.get(r.sender_id as string);
         if (!from) return null;
         return { id: r.id as string, fromUser: from };
       })
@@ -116,7 +116,7 @@ export default function FriendRequestsClient({
           event: "INSERT",
           schema: "public",
           table: "friend_requests",
-          filter: `to_user_id=eq.${currentUserId}`
+          filter: `receiver_id=eq.${currentUserId}`
         },
         () => {
           refresh().catch(() => {});
@@ -128,7 +128,7 @@ export default function FriendRequestsClient({
           event: "UPDATE",
           schema: "public",
           table: "friend_requests",
-          filter: `to_user_id=eq.${currentUserId}`
+          filter: `receiver_id=eq.${currentUserId}`
         },
         () => {
           refresh().catch(() => {});
@@ -140,7 +140,7 @@ export default function FriendRequestsClient({
           event: "DELETE",
           schema: "public",
           table: "friend_requests",
-          filter: `to_user_id=eq.${currentUserId}`
+          filter: `receiver_id=eq.${currentUserId}`
         },
         () => {
           refresh().catch(() => {});

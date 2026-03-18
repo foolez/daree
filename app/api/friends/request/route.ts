@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   console.log("[friends/request] lookup", {
     typedName,
     searchTerm,
-    from_user_id: user.id
+    sender_id: user.id
   });
 
   if (!typedName || !searchTerm) {
@@ -66,12 +66,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // Prevent duplicates (unique(from_user_id, to_user_id)).
+  // Prevent duplicates (unique(sender_id, receiver_id)).
   const { data: existing, error: existingError } = await supabase
     .from("friend_requests")
     .select("id,status")
-    .eq("from_user_id", user.id)
-    .eq("to_user_id", target.id)
+    .eq("sender_id", user.id)
+    .eq("receiver_id", target.id)
     .maybeSingle();
 
   if (existingError) {
@@ -94,8 +94,9 @@ export async function POST(request: Request) {
       .from("friend_requests")
       .insert([
         {
-          from_user_id: user.id,
-          to_user_id: target.id,
+          // sender_id = current user, receiver_id = found user
+          sender_id: user.id,
+          receiver_id: target.id,
           status: "pending",
         },
       ]);

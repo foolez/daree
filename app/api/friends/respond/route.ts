@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   const { data: reqRow, error: reqError } = await supabase
     .from("friend_requests")
-    .select("id, to_user_id, status, from_user_id")
+    .select("id, receiver_id, status, sender_id")
     .eq("id", request_id)
     .maybeSingle();
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Request not found" }, { status: 404 });
   }
 
-  if (reqRow.to_user_id !== user.id) {
+  if (reqRow.receiver_id !== user.id) {
     return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   }
   if (reqRow.status !== "pending") {

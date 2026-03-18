@@ -73,16 +73,16 @@ export default async function DashboardPage() {
   // Friend activity feed: accepted friend requests + posted today status
   const { data: friendReqRows } = await supabase
     .from("friend_requests")
-    .select("from_user_id,to_user_id")
+    .select("sender_id,receiver_id")
     .eq("status", "accepted")
-    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`);
+    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
   const friendIds = new Set<string>();
   for (const row of friendReqRows ?? []) {
-    const fromId = row.from_user_id as string;
-    const toId = row.to_user_id as string;
-    if (fromId === user.id) friendIds.add(toId);
-    else friendIds.add(fromId);
+    const senderId = row.sender_id as string;
+    const receiverId = row.receiver_id as string;
+    if (senderId === user.id) friendIds.add(receiverId);
+    else friendIds.add(senderId);
   }
 
   const friendIdList = Array.from(friendIds);

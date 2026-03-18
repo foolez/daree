@@ -104,12 +104,12 @@ export default async function ProfilePage() {
 
   const { data: requestRows, error: requestError } = await supabase
     .from("friend_requests")
-    .select("id, from_user_id")
-    .eq("to_user_id", user.id)
+    .select("id, sender_id")
+    .eq("receiver_id", user.id)
     .eq("status", "pending");
 
   if (!requestError && requestRows && requestRows.length > 0) {
-    const fromIds = requestRows.map((r: any) => r.from_user_id);
+    const fromIds = requestRows.map((r: any) => r.sender_id);
     const { data: fromUsers, error: fromUsersError } = await supabase
       .from("users")
       .select("id, username, display_name, avatar_url")
@@ -130,7 +130,7 @@ export default async function ProfilePage() {
 
       pendingRequests = requestRows
         .map((r: any) => {
-          const from = byId.get(r.from_user_id as string);
+          const from = byId.get(r.sender_id as string);
           if (!from) return null;
           return { id: r.id as string, fromUser: from };
         })
@@ -151,12 +151,12 @@ export default async function ProfilePage() {
 
   const { data: sentRows, error: sentError } = await supabase
     .from("friend_requests")
-    .select("id, to_user_id")
-    .eq("from_user_id", user.id)
+    .select("id, receiver_id")
+    .eq("sender_id", user.id)
     .eq("status", "pending");
 
   if (!sentError && sentRows && sentRows.length > 0) {
-    const toIds = sentRows.map((r: any) => r.to_user_id);
+    const toIds = sentRows.map((r: any) => r.receiver_id);
     const { data: toUsers, error: toUsersError } = await supabase
       .from("users")
       .select("id, username, display_name, avatar_url")
@@ -177,7 +177,7 @@ export default async function ProfilePage() {
 
       sentRequests = sentRows
         .map((r: any) => {
-          const to = byId.get(r.to_user_id as string);
+          const to = byId.get(r.receiver_id as string);
           if (!to) return null;
           return { id: r.id as string, toUser: to };
         })
