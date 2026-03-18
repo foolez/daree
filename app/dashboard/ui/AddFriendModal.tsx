@@ -12,6 +12,7 @@ export default function AddFriendModal(props: {
     "idle"
   );
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   if (!props.open) return null;
 
@@ -23,6 +24,7 @@ export default function AddFriendModal(props: {
       return;
     }
     setError(null);
+    setSuccessMessage(null);
     setStatus("loading");
 
     const res = await fetch("/api/friends/request", {
@@ -45,12 +47,14 @@ export default function AddFriendModal(props: {
     }
 
     setStatus("sent");
+    setSuccessMessage(data.message ?? `Request sent to ${cleaned}! 🔥`);
     props.onSent();
     setTimeout(() => {
       setUsername("");
       setStatus("idle");
+      setSuccessMessage(null);
       props.onClose();
-    }, 350);
+    }, 700);
   }
 
   return (
@@ -78,6 +82,11 @@ export default function AddFriendModal(props: {
             className="w-full rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-4 text-sm outline-none focus:border-[#00FF88]"
           />
           {error && <p className="text-sm text-[#FF3B3B]">{error}</p>}
+          {successMessage && (
+            <p className="text-sm font-semibold text-[#00FF88]">
+              {successMessage}
+            </p>
+          )}
           <button
             onClick={send}
             disabled={status === "loading"}

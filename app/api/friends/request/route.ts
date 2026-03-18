@@ -22,46 +22,68 @@ export async function POST(request: Request) {
   const { data: target, error: targetError } = await supabase
     .from("users")
     .select("id, username")
-    .eq("username", username)
+    // usernames should be lowercased on insert, but keep lookup case-insensitive
+    .ilike("username", username)
     .maybeSingle();
 
   if (targetError) {
-    return NextResponse.json({ error: "Could not find user." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not find user." },
+      { status: 500 }
+    );
   }
 
   if (!target) {
     return NextResponse.json(
-      { error: "No user found with this username." },
+      { error: "User not found. Check the spelling." },
       { status: 404 }
     );
   }
 
   if (target.id === user.id) {
     return NextResponse.json(
-      { error: "You cannot send a friend request to yourself." },
+      { error: "You can't add yourself!" },
       { status: 400 }
     );
   }
 
-  const { data: sentPending } = await supabase
+  // Prevent duplicates (any status, same direction) to avoid unique constraint errors.
+  const { data: existingSame } = await supabase
     .from("friend_requests")
-    .select("id")
+    .select("id,status")
     .eq("from_user_id", user.id)
     .eq("to_user_id", target.id)
-    .eq("status", "pending")
     .maybeSingle();
 
-  const { data: receivedPending } = await supabase
+  const { data: existingOther } = await supabase
     .from("friend_requests")
-    .select("id")
+    .select("id,status")
     .eq("from_user_id", target.id)
     .eq("to_user_id", user.id)
-    .eq("status", "pending")
     .maybeSingle();
 
-  if (sentPending || receivedPending) {
+  if (existingSame) {
+    if (existingSame.status === "pending") {
+      return NextResponse.json(
+        { error: "You already sent a pending request to this user." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
-      { error: "You already have a pending request with this user." },
+      { error: "A friend request already exists between you two." },
+      { status: 409 }
+    );
+  }
+
+  if (existingOther) {
+    if (existingOther.status === "pending") {
+      return NextResponse.json(
+        { error: "This user already has a pending request for you." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json(
+      { error: "A friend request already exists between you two." },
       { status: 409 }
     );
   }
@@ -81,6 +103,9 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true }, { status: 200 });
+  return NextResponse.json(
+    { success: true, message: `Request sent to ${target.username}! 🔥` },
+    { status: 200 }
+  );
 }
 
