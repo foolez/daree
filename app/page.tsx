@@ -103,14 +103,12 @@ export default function HomePage() {
         {/* Top nav */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div
-              className="h-9 w-9 rounded-full border border-white/15 bg-[#E81224] p-0.5"
-              aria-hidden="true"
-            >
+            <div className="h-9 w-9 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo.png"
-                alt="Daree logo"
+                alt=""
+                width={36}
                 height={36}
                 className="h-full w-full rounded-full object-cover"
               />
@@ -540,14 +538,12 @@ export default function HomePage() {
         <footer className="mt-14 border-t border-slate-900 pt-4 text-xs text-slate-500 md:mt-16">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
-              <div
-                className="h-7 w-7 rounded-full border border-white/15 bg-[#E81224] p-0.5"
-                aria-hidden="true"
-              >
+              <div className="h-7 w-7 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/logo.png"
-                  alt="Daree logo"
+                  alt=""
+                  width={28}
                   height={28}
                   className="h-full w-full rounded-full object-cover"
                 />

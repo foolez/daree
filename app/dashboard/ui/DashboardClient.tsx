@@ -349,14 +349,12 @@ export function DashboardClient(props: {
       >
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="h-10 w-10 rounded-full border border-white/15 bg-[#E81224] p-0.5"
-              aria-hidden="true"
-            >
+            <div className="h-10 w-10 overflow-hidden rounded-full border border-white/15 bg-[#E81224] p-0.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo.png"
-                alt="Daree logo"
+                alt=""
+                width={40}
                 height={40}
                 className="h-full w-full rounded-full object-cover"
               />
