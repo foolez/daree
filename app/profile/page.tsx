@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ProfileAvatarClient } from "./ProfileAvatarClient";
 
 export const dynamic = "force-dynamic";
 
@@ -141,24 +142,11 @@ export default async function ProfilePage() {
               <span className="inline-flex items-center rounded-full border border-[#2A2A2A] bg-black/50 px-2 py-1 text-[11px] font-semibold text-[#00FF88]">
                 {rank.label}
               </span>
-              <div className="h-14 w-14 overflow-hidden rounded-full border border-transparent bg-[radial-gradient(circle_at_top,_rgba(0,255,136,0.5),_transparent_55%),rgba(15,23,42,1)] p-[2px]">
-                <div className="h-full w-full overflow-hidden rounded-full border border-[#00FF88]/40 bg-[#020617]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {profile.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={profile.display_name ?? profile.username}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-[#00FF88]">
-                      {profile.display_name?.[0]?.toUpperCase() ??
-                        profile.username?.[0]?.toUpperCase() ??
-                        "?"}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ProfileAvatarClient
+                initialAvatarUrl={profile.avatar_url}
+                displayName={profile.display_name || profile.username}
+                username={profile.username}
+              />
             </div>
             <div>
               <h1 className="text-xl font-black tracking-tight">
