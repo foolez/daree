@@ -349,9 +349,13 @@ export function DashboardClient(props: {
       >
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#00FF88]/40 bg-black text-lg font-black text-[#00FF88]">
-              D
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="Daree logo"
+              height={36}
+              className="h-9 w-9 rounded-2xl border border-white/10 object-cover"
+            />
             <div>
               <div className="text-base font-black tracking-tight">Daree</div>
               <div className="text-xs text-[#888888]">
