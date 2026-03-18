@@ -103,13 +103,18 @@ export default function HomePage() {
         {/* Top nav */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="Daree logo"
-              height={36}
-              className="h-9 w-9 rounded-2xl border border-white/10 object-cover"
-            />
+            <div
+              className="h-9 w-9 rounded-full border border-white/15 bg-[#E81224] p-0.5"
+              aria-hidden="true"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="Daree logo"
+                height={36}
+                className="h-full w-full rounded-full object-cover"
+              />
+            </div>
             <div className="flex flex-col leading-tight">
               <span className="text-base font-semibold tracking-tight">
                 Daree
@@ -535,13 +540,18 @@ export default function HomePage() {
         <footer className="mt-14 border-t border-slate-900 pt-4 text-xs text-slate-500 md:mt-16">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt="Daree logo"
-                height={28}
-                className="h-7 w-7 rounded-xl border border-white/10 object-cover"
-              />
+              <div
+                className="h-7 w-7 rounded-full border border-white/15 bg-[#E81224] p-0.5"
+                aria-hidden="true"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo.png"
+                  alt="Daree logo"
+                  height={28}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              </div>
               <span className="font-semibold text-slate-200">Daree</span>
             </div>
 

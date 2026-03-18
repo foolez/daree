@@ -81,13 +81,18 @@ export function LoginClient() {
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-8">
         <div className="mt-8 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-5">
           <div className="flex flex-col items-center text-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="Daree logo"
-              height={64}
-              className="h-16 w-16 rounded-2xl border border-white/10 object-cover"
-            />
+            <div
+              className="h-16 w-16 rounded-full border border-white/15 bg-[#E81224] p-0.5"
+              aria-hidden="true"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="Daree logo"
+                height={64}
+                className="h-full w-full rounded-full object-cover"
+              />
+            </div>
             <h1 className="mt-3 text-xl font-black tracking-tight">Daree</h1>
             <p className="mt-1 text-xs text-[#888888]">
               Dare your friends. Prove yourself.
