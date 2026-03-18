@@ -394,7 +394,7 @@ export function DashboardClient(props: {
           <div className="flex items-center gap-3">
             <Link href="/profile" aria-label="Go to profile">
               <div
-                className="h-13 w-13 overflow-hidden rounded-full border-2 border-[#00FF88] bg-[#1A1A1A] p-0.5 ring-1 ring-[#00FF88]/30 shadow-[0_0_20px_rgba(0,255,136,0.18)]"
+                className="h-[52px] w-[52px] overflow-hidden rounded-full border-2 border-[#00FF88] bg-[#1A1A1A] p-0.5 ring-1 ring-[#00FF88]/30 shadow-[0_0_20px_rgba(0,255,136,0.18)]"
               >
                 {props.profile.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -435,53 +435,52 @@ export function DashboardClient(props: {
         </header>
 
         {/* Doom Clock + Slack Watch */}
-        <section className="mt-4 space-y-3">
+        <section className="mt-4 space-y-2">
           <div
-            className={`rounded-3xl border p-4 ${
+            className={`rounded-2xl border p-3 ${
               secured
-                ? "border-[#00FF88]/35 bg-[#030B06]"
-                : "border-[#FF6B35]/35 bg-[#0F0704]"
+                ? "border-[#00FF88]/40 bg-[#030B06]"
+                : "border-[#FF6B35]/40 bg-[#0F0704]"
             }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <p
-                  className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${
+                  className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
                     secured ? "text-[#00FF88]" : "text-[#FF6B35]"
                   }`}
                 >
-                  {secured ? "SECURED 🔥" : "TIME LEFT TO SECURE YOUR STREAK ⚠️"}
+                  {secured ? "SECURED 🔥" : "TIME LEFT ⚠️"}
                 </p>
-                <div className="mt-2 text-3xl font-black tabular-nums text-white">
-                  {String(hh).padStart(2, "0")}:
-                  {String(mm).padStart(2, "0")}:
-                  {String(ss).padStart(2, "0")}
+                <div className="mt-1 text-2xl font-black tabular-nums text-white">
+                  {String(hh).padStart(2, "0")}:{String(mm).padStart(
+                    2,
+                    "0"
+                  )}
+                  :{String(ss).padStart(2, "0")}
                 </div>
-                <p className="mt-1 text-[11px] text-[#888888]">
-                  Until midnight (00:00)
-                </p>
               </div>
-              <div className="text-right">
+              <div className="shrink-0">
                 <div
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                  className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
                     secured
                       ? "border-[#00FF88]/35 bg-[#00FF88]/10 text-[#00FF88]"
                       : "border-[#FF6B35]/35 bg-[#FF6B35]/10 text-[#FF6B35]"
                   }`}
                 >
-                  {secured ? "You posted today" : "You still need to post"}
+                  {secured ? "SECURED" : "POST TODAY"}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
               Slack watch
             </h2>
             <button
               onClick={() => setAddFriendOpen(true)}
-              className="rounded-xl border border-[#00FF88]/40 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-[#00FF88] transition active:scale-[0.99]"
+                className="rounded-xl border border-[#00FF88]/40 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-[#00FF88] transition active:scale-[0.99]"
             >
               + Add Friend
             </button>
@@ -662,77 +661,76 @@ export function DashboardClient(props: {
           )}
         </section>
 
-        {/* Global Top 5 */}
+        {/* Global Top 5 (Arena) */}
         <section className="mt-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
-              Global Top 5
-            </h2>
-            <span className="text-[11px] text-[#888888]">
-              🔥 longest streaks
-            </span>
-          </div>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+            Global Top 5
+          </h2>
 
           {props.globalTop5.length === 0 ? (
             <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
               No leaderboard data yet.
             </div>
           ) : (
-            <div className="mt-3 grid gap-2">
-              {props.globalTop5.map((u, idx) => (
-                <div
-                  key={u.userId}
-                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
-                    idx === 0
-                      ? "border-[#00FF88]/40 bg-[#00FF88]/10"
-                      : idx === 1
-                      ? "border-[#FF6B35]/40 bg-[#FF6B35]/10"
-                      : idx === 2
-                      ? "border-[#00FF88]/25 bg-[#00FF88]/5"
-                      : "border-[#2A2A2A] bg-[#1A1A1A]"
-                  }`}
-                >
+            <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A]">
+              <div className="px-4 py-3 text-[11px] text-[#888888]">
+                Rank <span className="ml-2">|</span> Avatar <span className="ml-2">|</span>{" "}
+                Username <span className="ml-2">|</span> Streak
+              </div>
+              <div className="divide-y divide-[#2A2A2A]">
+                {props.globalTop5.map((u, idx) => (
                   <div
-                    className={`text-sm font-black ${
+                    key={u.userId}
+                    className={`flex items-center gap-3 px-4 py-3 ${
                       idx === 0
-                        ? "text-[#00FF88]"
+                        ? "bg-[#00FF88]/10"
                         : idx === 1
-                        ? "text-[#FF6B35]"
+                        ? "bg-[#FF6B35]/10"
                         : idx === 2
-                        ? "text-[#00FF88]"
-                        : "text-[#888888]"
+                        ? "bg-[#00FF88]/5"
+                        : "bg-[#1A1A1A]"
                     }`}
                   >
-                    #{idx + 1}
-                  </div>
-
-                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
-                    {u.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={u.avatarUrl}
-                        alt={u.username}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs font-bold text-[#888888]">
-                        {u.username?.[0]?.toUpperCase() ?? "?"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-white">
-                      {u.displayName || u.username}
-                      {idx === 0 && <span className="ml-1">✨</span>}
-                      {idx === 1 && <span className="ml-1">🚀</span>}
+                    <div
+                      className={`w-8 text-sm font-black ${
+                        idx === 0
+                          ? "text-[#00FF88]"
+                          : idx === 1
+                          ? "text-[#FF6B35]"
+                          : idx === 2
+                          ? "text-[#00FF88]"
+                          : "text-[#888888]"
+                      }`}
+                    >
+                      #{idx + 1}
                     </div>
-                    <div className="text-[11px] text-[#888888]">
-                      🔥 {u.longestStreak} Days
+
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
+                      {u.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={u.avatarUrl}
+                          alt={u.username}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-[#888888]">
+                          {u.username?.[0]?.toUpperCase() ?? "?"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-white">
+                        {u.displayName || u.username}
+                      </div>
+                      <div className="text-[11px] text-[#888888]">
+                        🔥 {u.longestStreak} Days
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </section>

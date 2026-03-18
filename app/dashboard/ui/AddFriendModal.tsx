@@ -13,6 +13,7 @@ export default function AddFriendModal(props: {
   );
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   if (!props.open) return null;
 
@@ -25,6 +26,7 @@ export default function AddFriendModal(props: {
     }
     setError(null);
     setSuccessMessage(null);
+    setToast("Sending...");
     setStatus("loading");
 
     const res = await fetch("/api/friends/request", {
@@ -36,23 +38,28 @@ export default function AddFriendModal(props: {
     if (!res) {
       setError("Network error. Please try again.");
       setStatus("error");
+      setToast("Error: Network error. Please try again.");
       return;
     }
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(data.error ?? "Could not send request. Try again.");
+      const msg = data.error ?? "Could not send request. Try again.";
+      setError(msg);
       setStatus("error");
+      setToast(`Error: ${msg}`);
       return;
     }
 
     setStatus("sent");
     setSuccessMessage(data.message ?? `Request sent to ${cleaned}! 🔥`);
+    setToast("Success!");
     props.onSent();
     setTimeout(() => {
       setUsername("");
       setStatus("idle");
       setSuccessMessage(null);
+      setToast(null);
       props.onClose();
     }, 700);
   }
@@ -81,6 +88,15 @@ export default function AddFriendModal(props: {
             autoCorrect="off"
             className="w-full rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-4 text-sm outline-none focus:border-[#00FF88]"
           />
+          {toast && (
+            <p
+              className={`text-sm font-semibold ${
+                toast === "Success!" ? "text-[#00FF88]" : "text-[#FF3B3B]"
+              }`}
+            >
+              {toast}
+            </p>
+          )}
           {error && <p className="text-sm text-[#FF3B3B]">{error}</p>}
           {successMessage && (
             <p className="text-sm font-semibold text-[#00FF88]">
