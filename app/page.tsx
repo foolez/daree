@@ -115,9 +115,35 @@ export default function HomePage() {
               </span>
             </div>
           </div>
-          <span className="hidden text-xs font-medium text-slate-400 md:inline">
-            Arkadaşlarına meydan oku. Kendini kanıtla.
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden text-xs font-medium text-slate-400 lg:inline">
+              Arkadaşlarına meydan oku. Kendini kanıtla.
+            </span>
+
+            {/* Mobile: single button */}
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-black/30 px-3 py-2 text-xs font-semibold text-slate-100 backdrop-blur transition hover:border-[#00FF88]/60 md:hidden"
+            >
+              Sign in
+            </a>
+
+            {/* Desktop: two buttons */}
+            <div className="hidden items-center gap-2 md:flex">
+              <a
+                href="/login"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-transparent px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-[#00FF88]/60 hover:text-white"
+              >
+                Log in
+              </a>
+              <a
+                href="/login"
+                className="inline-flex items-center justify-center rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-semibold text-black shadow-[0_0_25px_rgba(0,255,136,0.35)] transition hover:bg-[#4dffac]"
+              >
+                Sign up
+              </a>
+            </div>
+          </div>
         </header>
 
         {/* Hero + mockup */}
