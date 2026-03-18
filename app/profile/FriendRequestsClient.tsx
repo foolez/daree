@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type RequestRow = {
   id: string;
@@ -15,7 +16,7 @@ type RequestRow = {
 
 function AvatarThumb(props: { url: string | null; name: string }) {
   return (
-    <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A]">
+    <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#121212]">
       {props.url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={props.url} alt={props.name} className="h-full w-full object-cover" />
@@ -29,14 +30,130 @@ function AvatarThumb(props: { url: string | null; name: string }) {
 }
 
 export default function FriendRequestsClient({
-  initialRequests
+  initialRequests,
+  currentUserId
 }: {
   initialRequests: RequestRow[];
+  currentUserId: string;
 }) {
   const [requests, setRequests] = useState(initialRequests);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  async function fetchPendingRequests(
+    supabase: ReturnType<typeof createSupabaseBrowserClient>
+  ) {
+    const { data: reqRows, error: reqErr } = await supabase
+      .from("friend_requests")
+      .select("id, from_user_id")
+      .eq("to_user_id", currentUserId)
+      .eq("status", "pending");
+
+    if (reqErr) throw reqErr;
+    const pendingRows = reqRows ?? [];
+
+    const fromIds = pendingRows
+      .map((r: any) => r.from_user_id as string)
+      .filter(Boolean);
+
+    if (fromIds.length === 0) return [];
+
+    const { data: users, error: usersErr } = await supabase
+      .from("users")
+      .select("id, username, display_name, avatar_url")
+      .in("id", fromIds);
+
+    if (usersErr) throw usersErr;
+
+    const byId = new Map<string, RequestRow["fromUser"]>(
+      (users ?? []).map((u: any) => [
+        u.id as string,
+        {
+          id: u.id as string,
+          username: (u.username ?? "") as string,
+          displayName: (u.display_name ?? null) as string | null,
+          avatarUrl: (u.avatar_url ?? null) as string | null
+        }
+      ])
+    );
+
+    return pendingRows
+      .map((r: any) => {
+        const from = byId.get(r.from_user_id as string);
+        if (!from) return null;
+        return { id: r.id as string, fromUser: from };
+      })
+      .filter(Boolean) as RequestRow[];
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    const supabase = createSupabaseBrowserClient();
+
+    const refresh = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const list = await fetchPendingRequests(supabase);
+        if (!cancelled) setRequests(list);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? "Could not load pending requests.");
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    // Initial sync (covers page loads & token timing).
+    refresh().catch(() => {});
+
+    const channel = supabase
+      .channel("friend_requests_pending")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "friend_requests",
+          filter: `to_user_id=eq.${currentUserId}`
+        },
+        () => {
+          refresh().catch(() => {});
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "friend_requests",
+          filter: `to_user_id=eq.${currentUserId}`
+        },
+        () => {
+          refresh().catch(() => {});
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "friend_requests",
+          filter: `to_user_id=eq.${currentUserId}`
+        },
+        () => {
+          refresh().catch(() => {});
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   async function respond(id: string, action: "accept" | "reject") {
     if (loadingId) return;
@@ -70,7 +187,7 @@ export default function FriendRequestsClient({
 
   if (!requests || requests.length === 0) {
     return (
-      <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-4 text-sm text-[#888888]">
+      <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] px-4 py-4 text-sm text-[#888888]">
         No pending requests.
       </div>
     );
@@ -81,7 +198,7 @@ export default function FriendRequestsClient({
       {requests.map((r) => (
         <div
           key={r.id}
-          className="flex items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-3"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] px-3 py-3"
         >
           <div className="flex items-center gap-3">
             <AvatarThumb url={r.fromUser.avatarUrl} name={r.fromUser.username} />

@@ -7,12 +7,6 @@ function normalizeUsername(raw: string) {
   return { typedName, searchTerm };
 }
 
-function looksLikeMissingColumn(message: string | null | undefined) {
-  if (!message) return false;
-  const m = message.toLowerCase();
-  return m.includes("does not exist") || m.includes("column") && m.includes("does not exist");
-}
-
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
 
@@ -72,73 +66,43 @@ export async function POST(request: Request) {
     );
   }
 
-  const candidates: Array<{ sender: string; receiver: string }> = [
-    { sender: "from_user_id", receiver: "to_user_id" },
-    { sender: "sender_id", receiver: "receiver_id" }
-  ];
-
-  let columns: { sender: string; receiver: string } = candidates[0];
-  let existingSame: any = null;
-  let existingOther: any = null;
-
-  for (const c of candidates) {
-    const { data: same, error: sameErr } = await supabase
-      .from("friend_requests")
-      .select("id,status")
-      .eq(c.sender, user.id)
-      .eq(c.receiver, target.id)
-      .maybeSingle();
-
-    const { data: other, error: otherErr } = await supabase
-      .from("friend_requests")
-      .select("id,status")
-      .eq(c.sender, target.id)
-      .eq(c.receiver, user.id)
-      .maybeSingle();
-
-    if (sameErr || otherErr) {
-      if (looksLikeMissingColumn(sameErr?.message) || looksLikeMissingColumn(otherErr?.message)) {
-        continue;
-      }
-      return NextResponse.json(
-        { error: "Could not validate existing friend requests." },
-        { status: 500 }
-      );
-    }
-
-    existingSame = same;
-    existingOther = other;
-    columns = c;
-    break;
-  }
-
-  if (existingSame) {
-    return NextResponse.json(
-      { error: "A friend request already exists between you two." },
-      { status: 409 }
-    );
-  }
-  if (existingOther) {
-    return NextResponse.json(
-      { error: "A friend request already exists between you two." },
-      { status: 409 }
-    );
-  }
-
-  const payload: any = {
-    status: "pending",
-    [columns.sender]: user.id,
-    [columns.receiver]: target.id
-  };
-
-  const { error: insertError } = await supabase
+  // Prevent duplicates (unique(from_user_id, to_user_id)).
+  const { data: existing, error: existingError } = await supabase
     .from("friend_requests")
-    .insert(payload);
+    .select("id,status")
+    .eq("from_user_id", user.id)
+    .eq("to_user_id", target.id)
+    .maybeSingle();
 
-  if (insertError) {
-    // If we guessed wrong column names, fail gracefully.
+  if (existingError) {
     return NextResponse.json(
-      { error: insertError.message || "Could not send request." },
+      { error: existingError.message || "Could not validate existing requests." },
+      { status: 409 }
+    );
+  }
+
+  if (existing) {
+    return NextResponse.json(
+      { error: "A friend request already exists between you two." },
+      { status: 409 }
+    );
+  }
+
+  try {
+    // Verify the insert succeeded (including RLS). If it fails, surface the real DB error.
+    const { error } = await supabase
+      .from("friend_requests")
+      .insert([
+        {
+          from_user_id: user.id,
+          to_user_id: target.id,
+          status: "pending",
+        },
+      ]);
+    if (error) throw error;
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message ?? "Could not send request." },
       { status: 500 }
     );
   }

@@ -138,6 +138,53 @@ export default async function ProfilePage() {
     }
   }
 
+  // Pending friend requests (sent by current user)
+  let sentRequests: {
+    id: string;
+    toUser: {
+      id: string;
+      username: string;
+      displayName: string | null;
+      avatarUrl: string | null;
+    };
+  }[] = [];
+
+  const { data: sentRows, error: sentError } = await supabase
+    .from("friend_requests")
+    .select("id, to_user_id")
+    .eq("from_user_id", user.id)
+    .eq("status", "pending");
+
+  if (!sentError && sentRows && sentRows.length > 0) {
+    const toIds = sentRows.map((r: any) => r.to_user_id);
+    const { data: toUsers, error: toUsersError } = await supabase
+      .from("users")
+      .select("id, username, display_name, avatar_url")
+      .in("id", toIds);
+
+    if (!toUsersError && toUsers) {
+      const byId = new Map(
+        toUsers.map((u: any) => [
+          u.id as string,
+          {
+            id: u.id as string,
+            username: (u.username ?? "") as string,
+            displayName: (u.display_name ?? null) as string | null,
+            avatarUrl: (u.avatar_url ?? null) as string | null
+          }
+        ])
+      );
+
+      sentRequests = sentRows
+        .map((r: any) => {
+          const to = byId.get(r.to_user_id as string);
+          if (!to) return null;
+          return { id: r.id as string, toUser: to };
+        })
+        .filter(Boolean) as any;
+    }
+  }
+
   const today = new Date();
   const sevenDaysAgo = new Date(
     today.getFullYear(),
@@ -250,7 +297,63 @@ export default async function ProfilePage() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
             Friend Requests
           </h2>
-          <FriendRequestsClient initialRequests={pendingRequests} />
+
+          <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4">
+            <h3 className="text-[12px] font-semibold text-white">
+              Received
+            </h3>
+            <FriendRequestsClient
+              initialRequests={pendingRequests}
+              currentUserId={user.id}
+            />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4">
+            <h3 className="text-[12px] font-semibold text-white">Sent</h3>
+
+            {sentRequests.length === 0 ? (
+              <div className="mt-3 text-sm text-[#888888]">
+                No pending sent requests.
+              </div>
+            ) : (
+              <div className="mt-3 grid gap-2">
+                {sentRequests.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] px-3 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#121212]">
+                        {r.toUser.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.toUser.avatarUrl}
+                            alt={r.toUser.username}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-sm font-bold text-[#00FF88]">
+                            {r.toUser.username.trim()[0]?.toUpperCase() ?? "?"}
+                          </span>
+                        )}
+                      </span>
+                      <div>
+                        <div className="text-sm font-semibold text-white">
+                          {r.toUser.displayName ?? r.toUser.username}
+                        </div>
+                        <div className="text-[11px] text-[#888888]">
+                          @{r.toUser.username}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-[#00FF88]/30 bg-[#00FF88]/10 px-3 py-1 text-[11px] font-semibold text-[#00FF88]">
+                      Pending
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Weekly consistency */}

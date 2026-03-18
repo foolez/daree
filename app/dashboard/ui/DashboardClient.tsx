@@ -522,10 +522,17 @@ export function DashboardClient(props: {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
-              Slack watch
-            </h2>
+          {/* Add Friend (neon card) */}
+          <div className="mx-auto max-w-md rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+                Add friend
+              </h2>
+              <span className="text-[11px] text-[#888888]">
+                Username (case-insensitive)
+              </span>
+            </div>
+
             <form
               className="flex items-center gap-2"
               onSubmit={(e) => {
@@ -536,32 +543,38 @@ export function DashboardClient(props: {
               <input
                 value={friendSearch}
                 onChange={(e) => setFriendSearch(e.target.value)}
-                placeholder="username"
-                className="w-28 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-[11px] text-white outline-none focus:border-[#00FF88]"
+                placeholder="e.g. ali_works"
+                className="flex-1 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-[11px] text-white outline-none focus:border-[#00FF88]"
                 autoCapitalize="none"
                 autoCorrect="off"
               />
               <button
                 type="submit"
                 disabled={friendSending}
-                className="rounded-xl border border-[#00FF88]/40 bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-[#00FF88] transition active:scale-[0.99] disabled:opacity-60"
+                className="rounded-xl bg-[#00FF88] px-4 py-2 text-xs font-semibold text-black shadow-[0_0_22px_rgba(0,255,136,0.35)] transition active:scale-[0.99] disabled:opacity-60"
               >
                 {friendSending ? "Adding…" : "Add"}
               </button>
             </form>
+
+            {friendFeedback && (
+              <div
+                className={`mt-2 text-[11px] font-semibold ${
+                  friendFeedback.kind === "success"
+                    ? "text-[#00FF88]"
+                    : "text-[#FF3B3B]"
+                }`}
+              >
+                {friendFeedback.text}
+              </div>
+            )}
           </div>
 
-          {friendFeedback && (
-            <div
-              className={`-mt-1 text-[11px] font-semibold ${
-                friendFeedback.kind === "success"
-                  ? "text-[#00FF88]"
-                  : "text-[#FF3B3B]"
-              }`}
-            >
-              {friendFeedback.text}
-            </div>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+              Slack watch
+            </h2>
+          </div>
 
           <div className="flex gap-3 overflow-x-auto pb-2">
             {props.friends.length === 0 ? (
