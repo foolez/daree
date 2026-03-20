@@ -110,25 +110,6 @@ function NudgeButton(props: {
   );
 }
 
-function IconBell(props: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={props.className ?? "h-5 w-5"}
-      aria-hidden="true"
-    >
-      <path
-        d="M15 17H9m8-2v-5a5 5 0 10-10 0v5l-2 2h14l-2-2z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function IconArrowLeft(props: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
@@ -350,7 +331,6 @@ export function DashboardClient(props: {
 }) {
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationTab, setNotificationTab] = useState<"all" | "nudges" | "challenges">("all");
   const [nudgeBanner, setNudgeBanner] = useState<string | null>(null);
@@ -391,6 +371,7 @@ export function DashboardClient(props: {
   const [notifications, setNotifications] = useState<NotificationItem[]>(
     props.initialNotifications ?? []
   );
+  const badgeCount = notifications.length;
 
   async function sendFriendRequest() {
     const typed = friendSearch.trim();
@@ -507,7 +488,6 @@ export function DashboardClient(props: {
         },
         (payload) => {
           const row: any = payload.new;
-          if (row?.is_read === false) setUnreadCount((c) => c + 1);
           if (row?.type === "nudge" && typeof row?.message === "string") {
             setNudgeBanner(row.message);
             setTimeout(() => setNudgeBanner(null), 6000);
@@ -535,10 +515,33 @@ export function DashboardClient(props: {
         },
         (payload) => {
           const row: any = payload.new;
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === String(row?.id)
+                ? {
+                    ...n,
+                    type: String(row?.type ?? n.type),
+                    title: String(row?.title ?? n.title),
+                    message: String(row?.message ?? n.message)
+                  }
+                : n
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${props.profile.id}`
+        },
+        (payload) => {
           const oldRow: any = payload.old;
-          if (oldRow?.is_read === false && row?.is_read === true) {
-            setUnreadCount((c) => Math.max(0, c - 1));
-          }
+          setNotifications((prev) =>
+            prev.filter((n) => n.id !== String(oldRow?.id ?? ""))
+          );
         }
       )
       .subscribe();
@@ -624,9 +627,24 @@ export function DashboardClient(props: {
         }`}
       >
         <header className="flex items-center justify-between">
-          <Link href="/dashboard" className="inline-flex items-center gap-2" aria-label="Daree home">
-            <Image src="/logo.png" alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" />
-            <span className="text-base font-black tracking-tight">Daree</span>
+          <Link href="/profile" className="inline-flex items-center gap-3" aria-label="Go to profile">
+            <span className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A]">
+              {props.profile.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={props.profile.avatarUrl}
+                  alt="Profile avatar"
+                  width={44}
+                  height={44}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <IconUser className="h-5 w-5 text-[#888888]" />
+              )}
+            </span>
+            <span className="text-sm font-semibold text-white">
+              {props.profile.displayName || props.profile.username}
+            </span>
           </Link>
 
           <button
@@ -637,9 +655,11 @@ export function DashboardClient(props: {
             style={{ animation: "pulseSoft 1.6s ease-in-out infinite" }}
           >
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF4B4B] px-1 text-[10px] font-semibold text-white">
-              {unreadCount > 0 ? Math.min(unreadCount, 99) : 2}
-            </span>
+            {badgeCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF4B4B] px-1 text-[10px] font-semibold text-white">
+                {badgeCount > 99 ? "99+" : badgeCount}
+              </span>
+            )}
           </button>
         </header>
 
