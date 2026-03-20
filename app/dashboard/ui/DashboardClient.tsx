@@ -331,6 +331,7 @@ export function DashboardClient(props: {
 }) {
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationTab, setNotificationTab] = useState<"all" | "nudges" | "challenges">("all");
   const [nudgeBanner, setNudgeBanner] = useState<string | null>(null);
@@ -371,7 +372,7 @@ export function DashboardClient(props: {
   const [notifications, setNotifications] = useState<NotificationItem[]>(
     props.initialNotifications ?? []
   );
-  const badgeCount = notifications.length;
+  const [avatarBroken, setAvatarBroken] = useState(false);
 
   async function sendFriendRequest() {
     const typed = friendSearch.trim();
@@ -492,6 +493,7 @@ export function DashboardClient(props: {
             setNudgeBanner(row.message);
             setTimeout(() => setNudgeBanner(null), 6000);
           }
+          if (row?.is_read === false) setUnreadCount((c) => c + 1);
           setNotifications((prev) => [
             {
               id: String(row?.id ?? crypto.randomUUID?.() ?? Date.now()),
@@ -515,6 +517,12 @@ export function DashboardClient(props: {
         },
         (payload) => {
           const row: any = payload.new;
+          const oldRow: any = payload.old;
+          if (oldRow?.is_read === false && row?.is_read === true) {
+            setUnreadCount((c) => Math.max(0, c - 1));
+          } else if (oldRow?.is_read === true && row?.is_read === false) {
+            setUnreadCount((c) => c + 1);
+          }
           setNotifications((prev) =>
             prev.map((n) =>
               n.id === String(row?.id)
@@ -539,6 +547,9 @@ export function DashboardClient(props: {
         },
         (payload) => {
           const oldRow: any = payload.old;
+          if (oldRow?.is_read === false) {
+            setUnreadCount((c) => Math.max(0, c - 1));
+          }
           setNotifications((prev) =>
             prev.filter((n) => n.id !== String(oldRow?.id ?? ""))
           );
@@ -629,7 +640,7 @@ export function DashboardClient(props: {
         <header className="flex items-center justify-between">
           <Link href="/profile" className="inline-flex items-center gap-3" aria-label="Go to profile">
             <span className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A]">
-              {props.profile.avatarUrl ? (
+              {props.profile.avatarUrl && !avatarBroken ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={props.profile.avatarUrl}
@@ -637,9 +648,15 @@ export function DashboardClient(props: {
                   width={44}
                   height={44}
                   className="h-full w-full object-cover"
+                  onError={() => setAvatarBroken(true)}
                 />
               ) : (
-                <IconUser className="h-5 w-5 text-[#888888]" />
+                <span className="text-sm font-bold text-[#00FF88]">
+                  {(props.profile.displayName || props.profile.username || "U")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </span>
               )}
             </span>
             <span className="text-sm font-semibold text-white">
@@ -650,14 +667,22 @@ export function DashboardClient(props: {
           <button
             type="button"
             onClick={() => setNotificationsOpen((v) => !v)}
-            className="relative rounded-2xl border border-[#00FF88]/50 bg-[#0E1A14] p-2 text-[#00FF88] shadow-[0_0_32px_rgba(0,255,136,0.48)] transition-all duration-200 ease-in-out"
+            className={`relative rounded-2xl border p-2 transition-all duration-200 ease-in-out ${
+              unreadCount > 0
+                ? "border-[#00FF88]/50 bg-[#0E1A14] text-[#00FF88] shadow-[0_0_32px_rgba(0,255,136,0.48)]"
+                : "border-[#2A2A2A] bg-[#1A1A1A] text-[#888888]"
+            }`}
             aria-label="Notifications"
-            style={{ animation: "pulseSoft 1.6s ease-in-out infinite" }}
+            style={
+              unreadCount > 0
+                ? { animation: "pulseSoft 1.6s ease-in-out infinite" }
+                : undefined
+            }
           >
             <Bell className="h-5 w-5" />
-            {badgeCount > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF4B4B] px-1 text-[10px] font-semibold text-white">
-                {badgeCount > 99 ? "99+" : badgeCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </button>
@@ -795,8 +820,8 @@ export function DashboardClient(props: {
             }`}
           >
             <div className="flex items-center justify-between">
-              <p className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${secured ? "text-[#00FF88]" : "text-[#FF4B4B]"}`}>
-                {secured ? "STREAK SECURED" : "DISCIPLINE ALERT"}
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#FF4B4B]">
+                Post vlog!
               </p>
               <span className="rounded-full border border-[#2A2A2A] px-2 py-0.5 text-[10px] text-[#888888]">
                 until 00:00
@@ -872,7 +897,7 @@ export function DashboardClient(props: {
             <div className="flex gap-3 overflow-x-auto pb-1">
             {props.friends.filter((f) => !f.postedToday).length === 0 ? (
               <div className="min-w-[240px] rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
-                Everyone posted today. No slackers in sight.
+                Everyone is disciplined today.
               </div>
             ) : (
               props.friends
