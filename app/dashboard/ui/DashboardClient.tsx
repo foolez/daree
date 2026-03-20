@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Zap } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -352,6 +352,9 @@ export function DashboardClient(props: {
 
   async function nudgeFriend(friend: FriendCircle) {
     if (nudgedById[friend.userId]) return;
+    // Optimistic UI for instant, haptic-like feedback.
+    setNudgedById((prev) => ({ ...prev, [friend.userId]: true }));
+
     const res = await fetch("/api/nudge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -363,6 +366,7 @@ export function DashboardClient(props: {
         kind: "error",
         text: "Database sync issue - check column names."
       });
+      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
       return;
     }
 
@@ -373,13 +377,9 @@ export function DashboardClient(props: {
         kind: "error",
         text: "Database sync issue - check column names."
       });
+      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
       return;
     }
-
-    setNudgedById((prev) => ({ ...prev, [friend.userId]: true }));
-    setTimeout(() => {
-      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
-    }, 3000);
   }
 
   useEffect(() => {
@@ -674,17 +674,34 @@ export function DashboardClient(props: {
                     <p className="max-w-[62px] truncate text-[10px] text-[#888888]">
                       @{f.username}
                     </p>
-                    <button
+                    <motion.button
                       onClick={() => nudgeFriend(f)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border bg-[#1A1A1A] text-[10px] font-bold transition ${
+                      whileHover={{ scale: 1.05, boxShadow: "0 0 14px rgba(0,255,136,0.3)" }}
+                      whileTap={{ scale: [0.9, 1.1, 1] }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className={`relative flex h-8 w-8 items-center justify-center rounded-full border bg-[#1A1A1A] transition-colors duration-300 ${
                         nudgedById[f.userId]
-                          ? "border-[#00FF88] text-[#00FF88] animate-pulse"
-                          : "border-[#2A2A2A] text-[#888888] hover:border-[#00FF88] hover:text-[#00FF88]"
+                          ? "border-[#00FF88] bg-[#00FF88] text-black"
+                          : "border-[#2A2A2A] text-[#E5E7EB]"
                       }`}
                       aria-label={`Nudge ${f.username}`}
                     >
-                      {nudgedById[f.userId] ? "NUDGED" : <Zap className="h-4 w-4" />}
-                    </button>
+                      <span className={nudgedById[f.userId] ? "animate-pulse" : ""}>
+                        👆
+                      </span>
+                    </motion.button>
+                    <AnimatePresence mode="wait">
+                      <motion.p
+                        key={nudgedById[f.userId] ? "sent" : "nudge"}
+                        initial={{ opacity: 0, y: 3 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -3 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="mt-1 text-[10px] font-bold tracking-widest text-[#888888]"
+                      >
+                        {nudgedById[f.userId] ? "SENT 🔥" : "NUDGE"}
+                      </motion.p>
+                    </AnimatePresence>
                   </div>
                 </div>
                 ))
