@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Zap } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -351,7 +352,6 @@ export function DashboardClient(props: {
 
   async function nudgeFriend(friend: FriendCircle) {
     if (nudgedById[friend.userId]) return;
-    setNudgedById((prev) => ({ ...prev, [friend.userId]: true }));
     const res = await fetch("/api/nudge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -359,20 +359,24 @@ export function DashboardClient(props: {
     }).catch(() => null);
 
     if (!res) {
-      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
+      setFriendFeedback({
+        kind: "error",
+        text: "Database sync issue - check column names."
+      });
       return;
     }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      console.error("[dashboard] nudge failed", data);
       setFriendFeedback({
         kind: "error",
-        text: data.error ?? `Could not nudge @${friend.username}.`
+        text: "Database sync issue - check column names."
       });
-      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
       return;
     }
 
+    setNudgedById((prev) => ({ ...prev, [friend.userId]: true }));
     setTimeout(() => {
       setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
     }, 3000);
@@ -617,7 +621,8 @@ export function DashboardClient(props: {
             </h2>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="rounded-2xl border border-[#2A2A2A] bg-[#121212] p-3">
+            <div className="flex gap-3 overflow-x-auto pb-1">
             {props.friends.filter((f) => !f.postedToday).length === 0 ? (
               <div className="min-w-[240px] rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
                 Everyone posted today. No slackers in sight.
@@ -632,7 +637,13 @@ export function DashboardClient(props: {
                   aria-label={`${f.username} missed`}
                 >
                   <div className="flex flex-col items-center gap-1">
-                    <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A] p-0.5">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border p-0.5 transition ${
+                        nudgedById[f.userId]
+                          ? "border-[#00FF88] bg-[#00FF88]/10"
+                          : "border-[#2A2A2A] bg-[#1A1A1A]"
+                      }`}
+                    >
                       <div className="flex h-full w-full items-center justify-center rounded-full bg-[#0A0A0A]">
                         {f.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -641,10 +652,20 @@ export function DashboardClient(props: {
                             alt={f.username}
                             width={44}
                             height={44}
-                            className="h-full w-full rounded-full object-cover"
+                            className={`h-full w-full rounded-full object-cover transition ${
+                              nudgedById[f.userId]
+                                ? "grayscale-0 opacity-100"
+                                : "grayscale opacity-60"
+                            }`}
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[#888888]">
+                          <div
+                            className={`flex h-full w-full items-center justify-center ${
+                              nudgedById[f.userId]
+                                ? "text-[#00FF88]"
+                                : "text-[#888888]"
+                            }`}
+                          >
                             <IconUser className="h-4 w-4" />
                           </div>
                         )}
@@ -655,15 +676,20 @@ export function DashboardClient(props: {
                     </p>
                     <button
                       onClick={() => nudgeFriend(f)}
-                      className="h-8 w-8 rounded-full border border-[#2A2A2A] bg-[#1A1A1A] text-xs transition hover:border-[#00FF88]"
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border bg-[#1A1A1A] text-[10px] font-bold transition ${
+                        nudgedById[f.userId]
+                          ? "border-[#00FF88] text-[#00FF88] animate-pulse"
+                          : "border-[#2A2A2A] text-[#888888] hover:border-[#00FF88] hover:text-[#00FF88]"
+                      }`}
                       aria-label={`Nudge ${f.username}`}
                     >
-                      {nudgedById[f.userId] ? "✅" : "👉"}
+                      {nudgedById[f.userId] ? "NUDGED" : <Zap className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
                 ))
             )}
+          </div>
           </div>
         </section>
 

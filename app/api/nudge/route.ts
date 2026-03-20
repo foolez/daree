@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-function isMissingColumnError(message: string | null | undefined) {
-  if (!message) return false;
-  const m = message.toLowerCase();
-  return m.includes("column") && m.includes("does not exist");
-}
-
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
 
@@ -45,43 +39,18 @@ export async function POST(request: Request) {
   const senderName =
     senderProfile?.username || senderProfile?.display_name || "Someone";
   const message = `${senderName} just nudged you to post your proof! Don't slack.`;
-
-  // Try rich payload first, then gracefully fallback to minimal payload
-  // so this works with existing notifications schemas.
-  const richPayload = {
+  const { error } = await supabase.from("notifications").insert({
     user_id: receiverId,
-    sender_id: user.id,
+    from_user_id: user.id,
     type: "nudge",
-    message,
-    is_read: false
-  };
+    title: "Loser Radar Nudge",
+    message
+  });
 
-  const { error: richError } = await supabase
-    .from("notifications")
-    .insert(richPayload);
-
-  if (!richError) {
-    return NextResponse.json({ success: true }, { status: 200 });
-  }
-
-  if (!isMissingColumnError(richError.message)) {
+  if (error) {
+    console.error("[api/nudge] notification insert failed", error);
     return NextResponse.json(
-      { error: richError.message || "Could not send nudge." },
-      { status: 500 }
-    );
-  }
-
-  const { error: fallbackError } = await supabase
-    .from("notifications")
-    .insert({
-      user_id: receiverId,
-      type: "nudge",
-      is_read: false
-    });
-
-  if (fallbackError) {
-    return NextResponse.json(
-      { error: fallbackError.message || "Could not send nudge." },
+      { error: "Database sync issue - check column names." },
       { status: 500 }
     );
   }
