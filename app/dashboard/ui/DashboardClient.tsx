@@ -270,6 +270,7 @@ export function DashboardClient(props: {
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
+  const [nudgeBanner, setNudgeBanner] = useState<string | null>(null);
   const [installBanner, setInstallBanner] = useState(false);
   const installEventRef = useRef<any>(null);
 
@@ -304,6 +305,7 @@ export function DashboardClient(props: {
     kind: "success" | "error";
     text: string;
   } | null>(null);
+  const [nudgedById, setNudgedById] = useState<Record<string, boolean>>({});
 
   async function sendFriendRequest() {
     const typed = friendSearch.trim();
@@ -345,6 +347,35 @@ export function DashboardClient(props: {
       kind: "success",
       text: data.message ?? "Request sent! 🚀"
     });
+  }
+
+  async function nudgeFriend(friend: FriendCircle) {
+    if (nudgedById[friend.userId]) return;
+    setNudgedById((prev) => ({ ...prev, [friend.userId]: true }));
+    const res = await fetch("/api/nudge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receiver_id: friend.userId })
+    }).catch(() => null);
+
+    if (!res) {
+      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
+      return;
+    }
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setFriendFeedback({
+        kind: "error",
+        text: data.error ?? `Could not nudge @${friend.username}.`
+      });
+      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
+      return;
+    }
+
+    setTimeout(() => {
+      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
+    }, 3000);
   }
 
   useEffect(() => {
@@ -389,6 +420,10 @@ export function DashboardClient(props: {
         (payload) => {
           const row: any = payload.new;
           if (row?.is_read === false) setUnreadCount((c) => c + 1);
+          if (row?.type === "nudge" && typeof row?.message === "string") {
+            setNudgeBanner(row.message);
+            setTimeout(() => setNudgeBanner(null), 6000);
+          }
         }
       )
       .on(
@@ -484,6 +519,12 @@ export function DashboardClient(props: {
 
         {/* Doom Clock + Slack Watch */}
         <section className="mt-4 space-y-2">
+          {nudgeBanner && (
+            <div className="max-w-md mx-auto rounded-2xl border border-[#00FF88]/40 bg-[#0E1A14] px-3 py-2 text-xs font-semibold text-[#B8FFD9]">
+              {nudgeBanner}
+            </div>
+          )}
+
           <div
             className={`h-24 max-w-md mx-auto rounded-2xl border p-2 overflow-hidden ${
               secured
@@ -571,45 +612,57 @@ export function DashboardClient(props: {
           </div>
 
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
-              Slack watch
+            <h2 className="text-sm font-black uppercase tracking-[0.22em] text-[#FF6B35]">
+              LOSER RADAR
             </h2>
           </div>
 
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {props.friends.length === 0 ? (
+            {props.friends.filter((f) => !f.postedToday).length === 0 ? (
               <div className="min-w-[240px] rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
-                Add a few friends to turn this into real pressure.
+                Everyone posted today. No slackers in sight.
               </div>
             ) : (
-              props.friends.map((f) => (
+              props.friends
+                .filter((f) => !f.postedToday)
+                .map((f) => (
                 <div
                   key={f.userId}
-                  className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border p-0.5 ${
-                    f.postedToday
-                      ? "border-[#00FF88] bg-[#00FF88]/10"
-                      : "border-[#2A2A2A] bg-[#1A1A1A]"
-                  }`}
-                  aria-label={`${f.username} ${f.postedToday ? "posted" : "missed"}`}
+                  className="w-16 shrink-0"
+                  aria-label={`${f.username} missed`}
                 >
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-[#0A0A0A]">
-                    {f.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={f.avatarUrl}
-                        alt={f.username}
-                        width={44}
-                        height={44}
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[#888888]">
-                        <IconUser className="h-4 w-4" />
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A] p-0.5">
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-[#0A0A0A]">
+                        {f.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={f.avatarUrl}
+                            alt={f.username}
+                            width={44}
+                            height={44}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[#888888]">
+                            <IconUser className="h-4 w-4" />
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <p className="max-w-[62px] truncate text-[10px] text-[#888888]">
+                      @{f.username}
+                    </p>
+                    <button
+                      onClick={() => nudgeFriend(f)}
+                      className="h-8 w-8 rounded-full border border-[#2A2A2A] bg-[#1A1A1A] text-xs transition hover:border-[#00FF88]"
+                      aria-label={`Nudge ${f.username}`}
+                    >
+                      {nudgedById[f.userId] ? "✅" : "👉"}
+                    </button>
                   </div>
                 </div>
-              ))
+                ))
             )}
           </div>
         </section>
