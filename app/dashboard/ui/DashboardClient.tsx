@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Bell } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -42,6 +43,7 @@ type GlobalLeader = {
 
 type NotificationItem = {
   id: string;
+  requestId?: string;
   type: string;
   title: string;
   message: string;
@@ -364,7 +366,6 @@ export function DashboardClient(props: {
   const challenges = props.initialChallenges ?? [];
   const hasChallenges = challenges.length > 0;
 
-  const greetingName = props.profile.displayName || props.profile.username;
   const pathname = usePathname();
   const onProfile = pathname.startsWith("/profile");
 
@@ -564,52 +565,21 @@ export function DashboardClient(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fallbackCards: NotificationItem[] = [
-    {
-      id: "fallback-nudge",
-      type: "nudge",
-      title: "Nudge",
-      message: "Ahmet D. nudged you! Your streak is at risk. Post proof now. 😤",
-      createdAt: new Date().toISOString(),
-      sender: {
-        id: "ahmet",
-        username: "ahmetd",
-        displayName: "Ahmet D.",
-        avatarUrl: "/image_996971.png"
-      }
-    },
-    {
-      id: "fallback-challenge",
-      type: "challenge",
-      title: "Challenge Invite",
-      message: "Invitation to: '90 Days Alcohol-Free' by Vural C.. Join or Slack? 🚫",
-      createdAt: new Date().toISOString(),
-      sender: {
-        id: "vural",
-        username: "vuralc",
-        displayName: "Vural C.",
-        avatarUrl: "/image_996971.png"
-      }
-    },
-    {
-      id: "fallback-streak",
-      type: "system",
-      title: "Discipline Alert",
-      message: "Discipline Alert: 4 hours left to secure your 100-day streak.",
-      createdAt: new Date().toISOString(),
-      sender: null
-    }
-  ];
-
-  const sourceNotifications = (notifications.length > 0 ? notifications : fallbackCards)
-    .filter((n) => n.type === "nudge" || n.type.includes("challenge") || n.type === "system");
+  const sourceNotifications = notifications.filter(
+    (n) =>
+      n.type === "nudge" ||
+      n.type.includes("challenge") ||
+      n.type === "system" ||
+      n.type === "friend_request"
+  );
 
   const visibleNotifications = sourceNotifications.filter((n) => {
     if (notificationTab === "all") return true;
     if (notificationTab === "nudges") return n.type === "nudge";
     return (
       n.type.includes("challenge") ||
-      n.title.toLowerCase().includes("challenge")
+      n.title.toLowerCase().includes("challenge") ||
+      n.type === "friend_request"
     );
   });
 
@@ -620,10 +590,30 @@ export function DashboardClient(props: {
     if (n.type === "nudge") {
       return `${friendName} nudged you! Your streak is at risk. Post proof now. 😤`;
     }
+    if (n.type === "friend_request") {
+      return `${friendName} sent you a friend request. Accept and lock in accountability.`;
+    }
     if (n.type.includes("challenge")) {
       return `Invitation to: '90 Days Alcohol-Free' by ${friendName}. Join or Slack? 🚫`;
     }
     return "Discipline Alert: 4 hours left to secure your 100-day streak.";
+  }
+
+  async function handleFriendRequestAction(
+    requestId: string | undefined,
+    action: "accept" | "reject"
+  ) {
+    if (!requestId) return;
+    const res = await fetch("/api/friends/respond", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId, action })
+    }).catch(() => null);
+
+    if (!res || !res.ok) return;
+    setNotifications((prev) =>
+      prev.filter((n) => !(n.type === "friend_request" && n.requestId === requestId))
+    );
   }
 
   return (
@@ -634,34 +624,10 @@ export function DashboardClient(props: {
         }`}
       >
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/profile" aria-label="Go to profile">
-              <div
-                className="h-[52px] w-[52px] overflow-hidden rounded-full border-2 border-[#00FF88] bg-[#1A1A1A] p-0.5 ring-1 ring-[#00FF88]/30 shadow-[0_0_20px_rgba(0,255,136,0.18)]"
-              >
-                {props.profile.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={props.profile.avatarUrl}
-                    alt="Profile avatar"
-                    width={52}
-                    height={52}
-                    className="h-full w-full rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-white/5 text-[#FFFFFF]">
-                    <IconUser className="h-7 w-7" />
-                  </div>
-                )}
-              </div>
-            </Link>
-            <div className="text-left">
-              <div className="text-base font-black tracking-tight">Daree</div>
-              <div className="text-xs text-[#888888]">
-                Hey, {greetingName} 👊
-              </div>
-            </div>
-          </div>
+          <Link href="/dashboard" className="inline-flex items-center gap-2" aria-label="Daree home">
+            <Image src="/logo.png" alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" />
+            <span className="text-base font-black tracking-tight">Daree</span>
+          </Link>
 
           <button
             type="button"
@@ -670,7 +636,7 @@ export function DashboardClient(props: {
             aria-label="Notifications"
             style={{ animation: "pulseSoft 1.6s ease-in-out infinite" }}
           >
-            <Image src="/image_99d668.png" alt="" width={26} height={26} className="h-6 w-6 object-contain" />
+            <Bell className="h-5 w-5" />
             <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF4B4B] px-1 text-[10px] font-semibold text-white">
               {unreadCount > 0 ? Math.min(unreadCount, 99) : 2}
             </span>
@@ -718,6 +684,11 @@ export function DashboardClient(props: {
             </div>
 
             <div className="mt-4 space-y-3">
+              {visibleNotifications.length === 0 && (
+                <div className="rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4 text-sm font-semibold text-[#888888]">
+                  Your discipline is unchallenged. No notifications.
+                </div>
+              )}
               {visibleNotifications.map((n) => (
                 <div
                   key={n.id}
@@ -755,6 +726,21 @@ export function DashboardClient(props: {
                       <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110">
                         POST PROOF
                       </button>
+                    ) : n.type === "friend_request" ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleFriendRequestAction(n.requestId, "accept")}
+                          className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110"
+                        >
+                          ACCEPT
+                        </button>
+                        <button
+                          onClick={() => handleFriendRequestAction(n.requestId, "reject")}
+                          className="rounded-xl border border-[#FF4B4B]/50 px-3 py-2 text-xs font-bold text-[#FF4B4B] transition-all duration-200 ease-in-out hover:bg-[#FF4B4B]/10"
+                        >
+                          REJECT
+                        </button>
+                      </div>
                     ) : n.type.includes("challenge") ? (
                       <div className="flex items-center gap-2">
                         <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110">

@@ -214,6 +214,61 @@ export default async function DashboardPage() {
       };
     }) ?? [];
 
+  const { data: pendingFriendRequests } = await supabase
+    .from("friend_requests")
+    .select("id, sender_id, created_at, status")
+    .eq("receiver_id", user.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const frSenderIds = Array.from(
+    new Set(
+      (pendingFriendRequests ?? [])
+        .map((r: any) => r.sender_id as string | null)
+        .filter(Boolean)
+    )
+  ) as string[];
+
+  const { data: frSenders } = frSenderIds.length
+    ? await supabase
+        .from("users")
+        .select("id, username, display_name, avatar_url")
+        .in("id", frSenderIds)
+    : { data: [] as any[] };
+
+  const frSenderById = new Map<string, any>(
+    (frSenders ?? []).map((u: any) => [u.id as string, u])
+  );
+
+  const friendRequestNotifications =
+    (pendingFriendRequests ?? []).map((r: any) => {
+      const s = frSenderById.get(r.sender_id as string);
+      return {
+        id: `fr_${r.id as string}`,
+        requestId: r.id as string,
+        type: "friend_request",
+        title: "Friend Request",
+        message: "",
+        createdAt: (r.created_at ?? "") as string,
+        sender: s
+          ? {
+              id: s.id as string,
+              username: (s.username ?? "") as string,
+              displayName: (s.display_name ?? null) as string | null,
+              avatarUrl: (s.avatar_url ?? null) as string | null
+            }
+          : null
+      };
+    }) ?? [];
+
+  const mergedNotifications = [...initialNotifications, ...friendRequestNotifications]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    )
+    .slice(0, 40);
+
   return (
     <div className="max-w-md mx-auto">
       <DashboardClient
@@ -226,7 +281,7 @@ export default async function DashboardPage() {
         nudgeAssetSrc="/image_98f929.png"
         initialChallenges={challenges}
         initialUnreadCount={unreadCount ?? 0}
-        initialNotifications={initialNotifications}
+        initialNotifications={mergedNotifications}
         youPostedToday={youPostedToday}
         friends={friends}
         globalTop5={globalTop5}
