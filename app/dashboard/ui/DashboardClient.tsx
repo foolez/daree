@@ -127,23 +127,6 @@ function IconBell(props: { className?: string }) {
   );
 }
 
-function IconSettings(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
-      <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M19.4 15l1-1.7-1-1.7 1-1.7-1.8-1-1-1.8-1.9.1L13.9 4h-3.8l-.8 1.9-1.9-.1-1 1.8-1.8 1 1 1.7-1 1.7 1 1.7-1 1.7 1.8 1 1 1.8 1.9-.1.8 1.9h3.8l.8-1.9 1.9.1 1-1.8 1.8-1-1-1.7z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconClose(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function IconArrowLeft(props: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
@@ -586,7 +569,7 @@ export function DashboardClient(props: {
       id: "fallback-nudge",
       type: "nudge",
       title: "Nudge",
-      message: "Ahmet D. nudged you! Time to prove your strength. 😤",
+      message: "Ahmet D. nudged you! Your streak is at risk. Post proof now. 😤",
       createdAt: new Date().toISOString(),
       sender: {
         id: "ahmet",
@@ -599,7 +582,7 @@ export function DashboardClient(props: {
       id: "fallback-challenge",
       type: "challenge",
       title: "Challenge Invite",
-      message: "Vural C. challenged you to: 'Do 50 pushups in 1 min'. Join or slack? 🔥",
+      message: "Invitation to: '90 Days Alcohol-Free' by Vural C.. Join or Slack? 🚫",
       createdAt: new Date().toISOString(),
       sender: {
         id: "vural",
@@ -610,16 +593,16 @@ export function DashboardClient(props: {
     },
     {
       id: "fallback-streak",
-      type: "streak",
-      title: "Streak Secured",
-      message: "Your vlog streak is secure for today! 💪 Keep the heat alive.",
+      type: "system",
+      title: "Discipline Alert",
+      message: "Discipline Alert: 4 hours left to secure your 100-day streak.",
       createdAt: new Date().toISOString(),
       sender: null
     }
   ];
 
-  const sourceNotifications =
-    notifications.length > 0 ? notifications : fallbackCards;
+  const sourceNotifications = (notifications.length > 0 ? notifications : fallbackCards)
+    .filter((n) => n.type === "nudge" || n.type.includes("challenge") || n.type === "system");
 
   const visibleNotifications = sourceNotifications.filter((n) => {
     if (notificationTab === "all") return true;
@@ -629,6 +612,19 @@ export function DashboardClient(props: {
       n.title.toLowerCase().includes("challenge")
     );
   });
+
+  const dayProgress = remainingSeconds / 86400;
+
+  function notificationCopy(n: NotificationItem) {
+    const friendName = n.sender?.displayName || n.sender?.username || "A friend";
+    if (n.type === "nudge") {
+      return `${friendName} nudged you! Your streak is at risk. Post proof now. 😤`;
+    }
+    if (n.type.includes("challenge")) {
+      return `Invitation to: '90 Days Alcohol-Free' by ${friendName}. Join or Slack? 🚫`;
+    }
+    return "Discipline Alert: 4 hours left to secure your 100-day streak.";
+  }
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
@@ -667,36 +663,18 @@ export function DashboardClient(props: {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 text-[#888888]"
-              aria-label="Settings"
-              type="button"
-            >
-              <IconSettings className="h-5 w-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setNotificationsOpen((v) => !v)}
-              className="relative rounded-2xl border border-[#00FF88]/50 bg-[#0E1A14] p-3 text-[#00FF88] shadow-[0_0_26px_rgba(0,255,136,0.38)]"
-              aria-label="Notifications"
-              style={{ animation: "pulseSoft 1.6s ease-in-out infinite" }}
-            >
-              <IconBell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF3B3B] px-1 text-[10px] font-semibold text-white">
-                {unreadCount > 0 ? Math.min(unreadCount, 99) : 2}
-              </span>
-            </button>
-
-            <Link
-              href="/dashboard"
-              className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 text-[#888888]"
-              aria-label="Exit panel"
-            >
-              <IconClose className="h-5 w-5" />
-            </Link>
-          </div>
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen((v) => !v)}
+            className="relative rounded-2xl border border-[#00FF88]/50 bg-[#0E1A14] p-2 text-[#00FF88] shadow-[0_0_32px_rgba(0,255,136,0.48)] transition-all duration-200 ease-in-out"
+            aria-label="Notifications"
+            style={{ animation: "pulseSoft 1.6s ease-in-out infinite" }}
+          >
+            <Image src="/image_99d668.png" alt="" width={26} height={26} className="h-6 w-6 object-contain" />
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF4B4B] px-1 text-[10px] font-semibold text-white">
+              {unreadCount > 0 ? Math.min(unreadCount, 99) : 2}
+            </span>
+          </button>
         </header>
 
         {notificationsOpen && (
@@ -713,7 +691,7 @@ export function DashboardClient(props: {
                 className="inline-flex items-center gap-1 rounded-xl border border-[#00FF88]/40 px-2 py-1 text-xs font-bold text-[#00FF88]"
               >
                 <IconArrowLeft className="h-4 w-4" />
-                geriye don
+                BACK
               </button>
               <h2 className="text-center text-lg font-black tracking-[0.18em] text-[#00FF88]">
                 NOTIFICATIONS
@@ -747,7 +725,11 @@ export function DashboardClient(props: {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      {n.sender?.avatarUrl ? (
+                      {n.type === "nudge" ? (
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#00FF88]/40 bg-[#0E1A14]">
+                          <Image src={props.nudgeAssetSrc} alt="" width={20} height={20} className="h-5 w-5 object-contain" />
+                        </span>
+                      ) : n.sender?.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={n.sender.avatarUrl}
@@ -761,7 +743,7 @@ export function DashboardClient(props: {
                       )}
                       <div>
                         <p className="text-sm font-extrabold text-white">
-                          {n.message || n.title || "New notification"}
+                          {notificationCopy(n)}
                         </p>
                         <p className="mt-1 text-[11px] text-[#888888]">
                           {n.type.toUpperCase()}
@@ -770,16 +752,16 @@ export function DashboardClient(props: {
                     </div>
 
                     {n.type === "nudge" ? (
-                      <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black">
-                        Post Vlog
+                      <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110">
+                        POST PROOF
                       </button>
                     ) : n.type.includes("challenge") ? (
                       <div className="flex items-center gap-2">
-                        <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black">
-                          Join
+                        <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110">
+                          JOIN
                         </button>
-                        <button className="rounded-xl border border-[#FF3B3B]/50 px-3 py-2 text-xs font-bold text-[#FF3B3B]">
-                          Reject
+                        <button className="rounded-xl border border-[#FF4B4B]/50 px-3 py-2 text-xs font-bold text-[#FF4B4B] transition-all duration-200 ease-in-out hover:bg-[#FF4B4B]/10">
+                          REJECT
                         </button>
                       </div>
                     ) : null}
@@ -800,40 +782,29 @@ export function DashboardClient(props: {
           )}
 
           <div
-            className={`h-24 max-w-md mx-auto rounded-2xl border p-2 overflow-hidden ${
+            className={`max-w-md mx-auto rounded-2xl border p-3 backdrop-blur-md ${
               secured
-                ? "border-[#00FF88]/40 bg-[#030B06]"
-                : "border-[#FF6B35]/40 bg-[#0F0704]"
+                ? "border-[#00FF88]/30 bg-white/5"
+                : "border-[#FF4B4B]/30 bg-white/5"
             }`}
           >
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p
-                  className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
-                    secured ? "text-[#00FF88]" : "text-[#FF6B35]"
-                  }`}
-                >
-                  {secured ? "SECURED 🔥" : "TIME LEFT ⚠️"}
-                </p>
-                <div className="mt-1 text-2xl font-black tabular-nums text-white">
-                  {String(hh).padStart(2, "0")}:{String(mm).padStart(
-                    2,
-                    "0"
-                  )}
-                  :{String(ss).padStart(2, "0")}
-                </div>
-              </div>
-              <div className="shrink-0">
-                <div
-                  className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-                    secured
-                      ? "border-[#00FF88]/35 bg-[#00FF88]/10 text-[#00FF88]"
-                      : "border-[#FF6B35]/35 bg-[#FF6B35]/10 text-[#FF6B35]"
-                  }`}
-                >
-                  {secured ? "SECURED" : "POST TODAY"}
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${secured ? "text-[#00FF88]" : "text-[#FF4B4B]"}`}>
+                {secured ? "STREAK SECURED" : "DISCIPLINE ALERT"}
+              </p>
+              <span className="rounded-full border border-[#2A2A2A] px-2 py-0.5 text-[10px] text-[#888888]">
+                until 00:00
+              </span>
+            </div>
+            <div className="mt-2 font-mono text-[28px] font-bold tracking-[0.06em] text-white">
+              {String(hh).padStart(2, "0")}:{String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
+            </div>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#1A1A1A]">
+              <motion.div
+                className={`h-full ${secured ? "bg-[#00FF88]" : "bg-[#FF4B4B]"}`}
+                animate={{ width: `${Math.max(0, Math.min(100, dayProgress * 100))}%` }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+              />
             </div>
           </div>
 
