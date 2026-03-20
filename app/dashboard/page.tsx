@@ -177,6 +177,7 @@ export default async function DashboardPage() {
           displayName: profile.display_name,
           avatarUrl: profile.avatar_url ?? null
         }}
+        nudgeAssetSrc="/image_98f929.png"
         initialChallenges={challenges}
         initialUnreadCount={unreadCount ?? 0}
         youPostedToday={youPostedToday}

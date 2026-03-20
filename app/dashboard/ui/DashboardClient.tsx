@@ -40,6 +40,60 @@ type GlobalLeader = {
   longestStreak: number;
 };
 
+function NudgeButton(props: {
+  nudged: boolean;
+  onClick: () => void;
+  username: string;
+  assetSrc: string;
+}) {
+  return (
+    <div className="flex flex-col items-center">
+      <motion.button
+        onClick={props.onClick}
+        whileHover={{ scale: 1.05, boxShadow: "0 0 14px rgba(0,255,136,0.3)" }}
+        whileTap={{ scale: [0.9, 1.1, 1] }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className={`relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-[#1A1A1A] transition-colors duration-300 ${
+          props.nudged
+            ? "border-[#00FF88] bg-[#00FF88]"
+            : "border-[#2A2A2A] bg-[#1A1A1A]"
+        }`}
+        aria-label={`Nudge ${props.username}`}
+      >
+        <span
+          className={`relative inline-flex items-center justify-center rounded-full ${
+            props.nudged ? "animate-pulse" : "bg-[#00FF88]/15"
+          }`}
+        >
+          <Image
+            src={props.assetSrc}
+            alt=""
+            width={16}
+            height={16}
+            className={`h-4 w-4 object-contain ${
+              props.nudged
+                ? ""
+                : "brightness-125 saturate-200 [filter:drop-shadow(0_0_6px_rgba(0,255,136,0.95))]"
+            }`}
+          />
+        </span>
+      </motion.button>
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={props.nudged ? "sent" : "nudge"}
+          initial={{ opacity: 0, y: 3 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -3 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className="mt-1 text-[10px] font-bold tracking-widest text-[#888888]"
+        >
+          {props.nudged ? "SENT" : "NUDGE"}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function IconBell(props: { className?: string }) {
   return (
     <svg
@@ -262,6 +316,7 @@ function JoinSheet(props: {
 
 export function DashboardClient(props: {
   profile: Profile;
+  nudgeAssetSrc: string;
   initialChallenges: ChallengeCard[];
   initialUnreadCount: number;
   youPostedToday: boolean;
@@ -674,34 +729,12 @@ export function DashboardClient(props: {
                     <p className="max-w-[62px] truncate text-[10px] text-[#888888]">
                       @{f.username}
                     </p>
-                    <motion.button
+                    <NudgeButton
+                      nudged={!!nudgedById[f.userId]}
                       onClick={() => nudgeFriend(f)}
-                      whileHover={{ scale: 1.05, boxShadow: "0 0 14px rgba(0,255,136,0.3)" }}
-                      whileTap={{ scale: [0.9, 1.1, 1] }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className={`relative flex h-8 w-8 items-center justify-center rounded-full border bg-[#1A1A1A] transition-colors duration-300 ${
-                        nudgedById[f.userId]
-                          ? "border-[#00FF88] bg-[#00FF88] text-black"
-                          : "border-[#2A2A2A] text-[#E5E7EB]"
-                      }`}
-                      aria-label={`Nudge ${f.username}`}
-                    >
-                      <span className={nudgedById[f.userId] ? "animate-pulse" : ""}>
-                        👆
-                      </span>
-                    </motion.button>
-                    <AnimatePresence mode="wait">
-                      <motion.p
-                        key={nudgedById[f.userId] ? "sent" : "nudge"}
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -3 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="mt-1 text-[10px] font-bold tracking-widest text-[#888888]"
-                      >
-                        {nudgedById[f.userId] ? "SENT 🔥" : "NUDGE"}
-                      </motion.p>
-                    </AnimatePresence>
+                      username={f.username}
+                      assetSrc={props.nudgeAssetSrc}
+                    />
                   </div>
                 </div>
                 ))
