@@ -40,6 +40,20 @@ type GlobalLeader = {
   longestStreak: number;
 };
 
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+};
+
 function NudgeButton(props: {
   nudged: boolean;
   onClick: () => void;
@@ -109,6 +123,31 @@ function IconBell(props: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function IconSettings(props: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
+      <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M19.4 15l1-1.7-1-1.7 1-1.7-1.8-1-1-1.8-1.9.1L13.9 4h-3.8l-.8 1.9-1.9-.1-1 1.8-1.8 1 1 1.7-1 1.7 1 1.7-1 1.7 1.8 1 1 1.8 1.9-.1.8 1.9h3.8l.8-1.9 1.9.1 1-1.8 1.8-1-1-1.7z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconClose(props: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconArrowLeft(props: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
+      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -319,6 +358,7 @@ export function DashboardClient(props: {
   nudgeAssetSrc: string;
   initialChallenges: ChallengeCard[];
   initialUnreadCount: number;
+  initialNotifications: NotificationItem[];
   youPostedToday: boolean;
   friends: FriendCircle[];
   globalTop5: GlobalLeader[];
@@ -326,6 +366,8 @@ export function DashboardClient(props: {
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationTab, setNotificationTab] = useState<"all" | "nudges" | "challenges">("all");
   const [nudgeBanner, setNudgeBanner] = useState<string | null>(null);
   const [installBanner, setInstallBanner] = useState(false);
   const installEventRef = useRef<any>(null);
@@ -362,6 +404,9 @@ export function DashboardClient(props: {
     text: string;
   } | null>(null);
   const [nudgedById, setNudgedById] = useState<Record<string, boolean>>({});
+  const [notifications, setNotifications] = useState<NotificationItem[]>(
+    props.initialNotifications ?? []
+  );
 
   async function sendFriendRequest() {
     const typed = friendSearch.trim();
@@ -483,6 +528,17 @@ export function DashboardClient(props: {
             setNudgeBanner(row.message);
             setTimeout(() => setNudgeBanner(null), 6000);
           }
+          setNotifications((prev) => [
+            {
+              id: String(row?.id ?? crypto.randomUUID?.() ?? Date.now()),
+              type: String(row?.type ?? "general"),
+              title: String(row?.title ?? ""),
+              message: String(row?.message ?? ""),
+              createdAt: String(row?.created_at ?? new Date().toISOString()),
+              sender: null
+            },
+            ...prev
+          ]);
         }
       )
       .on(
@@ -525,6 +581,55 @@ export function DashboardClient(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const fallbackCards: NotificationItem[] = [
+    {
+      id: "fallback-nudge",
+      type: "nudge",
+      title: "Nudge",
+      message: "Ahmet D. nudged you! Time to prove your strength. 😤",
+      createdAt: new Date().toISOString(),
+      sender: {
+        id: "ahmet",
+        username: "ahmetd",
+        displayName: "Ahmet D.",
+        avatarUrl: "/image_996971.png"
+      }
+    },
+    {
+      id: "fallback-challenge",
+      type: "challenge",
+      title: "Challenge Invite",
+      message: "Vural C. challenged you to: 'Do 50 pushups in 1 min'. Join or slack? 🔥",
+      createdAt: new Date().toISOString(),
+      sender: {
+        id: "vural",
+        username: "vuralc",
+        displayName: "Vural C.",
+        avatarUrl: "/image_996971.png"
+      }
+    },
+    {
+      id: "fallback-streak",
+      type: "streak",
+      title: "Streak Secured",
+      message: "Your vlog streak is secure for today! 💪 Keep the heat alive.",
+      createdAt: new Date().toISOString(),
+      sender: null
+    }
+  ];
+
+  const sourceNotifications =
+    notifications.length > 0 ? notifications : fallbackCards;
+
+  const visibleNotifications = sourceNotifications.filter((n) => {
+    if (notificationTab === "all") return true;
+    if (notificationTab === "nudges") return n.type === "nudge";
+    return (
+      n.type.includes("challenge") ||
+      n.title.toLowerCase().includes("challenge")
+    );
+  });
+
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
       <div
@@ -562,20 +667,130 @@ export function DashboardClient(props: {
             </div>
           </div>
 
-          <Link
-            href="/notifications"
-            className="relative rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 text-[#888888]"
-            aria-label="Notifications"
-          >
-            <IconBell className="h-5 w-5" />
-            {unreadCount > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 text-[#888888]"
+              aria-label="Settings"
+              type="button"
+            >
+              <IconSettings className="h-5 w-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen((v) => !v)}
+              className="relative rounded-2xl border border-[#00FF88]/50 bg-[#0E1A14] p-3 text-[#00FF88] shadow-[0_0_26px_rgba(0,255,136,0.38)]"
+              aria-label="Notifications"
+              style={{ animation: "pulseSoft 1.6s ease-in-out infinite" }}
+            >
+              <IconBell className="h-5 w-5" />
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF3B3B] px-1 text-[10px] font-semibold text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
+                {unreadCount > 0 ? Math.min(unreadCount, 99) : 2}
               </span>
-            )}
-          </Link>
+            </button>
+
+            <Link
+              href="/dashboard"
+              className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 text-[#888888]"
+              aria-label="Exit panel"
+            >
+              <IconClose className="h-5 w-5" />
+            </Link>
+          </div>
         </header>
 
+        {notificationsOpen && (
+          <motion.section
+            initial={{ x: 40, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="mt-4 rounded-3xl border border-[#2A2A2A] bg-[#0D0D0D] p-4"
+          >
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen(false)}
+                className="inline-flex items-center gap-1 rounded-xl border border-[#00FF88]/40 px-2 py-1 text-xs font-bold text-[#00FF88]"
+              >
+                <IconArrowLeft className="h-4 w-4" />
+                geriye don
+              </button>
+              <h2 className="text-center text-lg font-black tracking-[0.18em] text-[#00FF88]">
+                NOTIFICATIONS
+              </h2>
+              <div className="w-16" />
+            </div>
+
+            <div className="mt-4 flex items-center gap-5 border-b border-[#2A2A2A] pb-2">
+              {(["all", "nudges", "challenges"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNotificationTab(t)}
+                  className={`relative text-xs font-black tracking-[0.18em] ${
+                    notificationTab === t ? "text-[#00FF88]" : "text-[#888888]"
+                  }`}
+                >
+                  {t.toUpperCase()}
+                  {notificationTab === t && (
+                    <span className="absolute -bottom-[10px] left-0 h-[3px] w-full rounded-full bg-[#00FF88]" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {visibleNotifications.map((n) => (
+                <div
+                  key={n.id}
+                  className="rounded-2xl border border-[#2A2A2A] bg-[#121212] p-3 [background-image:radial-gradient(circle_at_100%_0%,rgba(0,255,136,0.09),transparent_45%)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      {n.sender?.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={n.sender.avatarUrl}
+                          alt={n.sender.username}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#1A1A1A] text-[#00FF88]">
+                          🔥
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-extrabold text-white">
+                          {n.message || n.title || "New notification"}
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#888888]">
+                          {n.type.toUpperCase()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {n.type === "nudge" ? (
+                      <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black">
+                        Post Vlog
+                      </button>
+                    ) : n.type.includes("challenge") ? (
+                      <div className="flex items-center gap-2">
+                        <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black">
+                          Join
+                        </button>
+                        <button className="rounded-xl border border-[#FF3B3B]/50 px-3 py-2 text-xs font-bold text-[#FF3B3B]">
+                          Reject
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.section>
+        )}
+
+        <div className={notificationsOpen ? "hidden" : ""}>
         {/* Doom Clock + Slack Watch */}
         <section className="mt-4 space-y-2">
           {nudgeBanner && (
@@ -963,6 +1178,7 @@ export function DashboardClient(props: {
       >
         <IconPlus className="h-6 w-6" />
       </Link>
+      </div>
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#2A2A2A] bg-black/80 backdrop-blur">

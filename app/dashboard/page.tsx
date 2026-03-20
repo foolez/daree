@@ -168,6 +168,52 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .eq("is_read", false);
 
+  const { data: notificationRows } = await supabase
+    .from("notifications")
+    .select("id, type, title, message, from_user_id, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const senderIds = Array.from(
+    new Set(
+      (notificationRows ?? [])
+        .map((n: any) => n.from_user_id as string | null)
+        .filter(Boolean)
+    )
+  ) as string[];
+
+  const { data: senderUsers } = senderIds.length
+    ? await supabase
+        .from("users")
+        .select("id, username, display_name, avatar_url")
+        .in("id", senderIds)
+    : { data: [] as any[] };
+
+  const senderById = new Map<string, any>(
+    (senderUsers ?? []).map((u: any) => [u.id as string, u])
+  );
+
+  const initialNotifications =
+    (notificationRows ?? []).map((n: any) => {
+      const s = n.from_user_id ? senderById.get(n.from_user_id as string) : null;
+      return {
+        id: n.id as string,
+        type: (n.type ?? "general") as string,
+        title: (n.title ?? "") as string,
+        message: (n.message ?? "") as string,
+        createdAt: (n.created_at ?? "") as string,
+        sender: s
+          ? {
+              id: s.id as string,
+              username: (s.username ?? "") as string,
+              displayName: (s.display_name ?? null) as string | null,
+              avatarUrl: (s.avatar_url ?? null) as string | null
+            }
+          : null
+      };
+    }) ?? [];
+
   return (
     <div className="max-w-md mx-auto">
       <DashboardClient
@@ -180,6 +226,7 @@ export default async function DashboardPage() {
         nudgeAssetSrc="/image_98f929.png"
         initialChallenges={challenges}
         initialUnreadCount={unreadCount ?? 0}
+        initialNotifications={initialNotifications}
         youPostedToday={youPostedToday}
         friends={friends}
         globalTop5={globalTop5}
