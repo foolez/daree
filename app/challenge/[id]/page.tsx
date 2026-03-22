@@ -11,9 +11,11 @@ function startOfTodayIso() {
 }
 
 export default async function ChallengePage({
-  params
+  params,
+  searchParams
 }: {
   params: { id: string };
+  searchParams: { vlog?: string };
 }) {
   const supabase = createSupabaseServerClient();
 
@@ -102,6 +104,7 @@ export default async function ChallengePage({
 
   return (
     <ChallengeClient
+      initialOpenVlogId={searchParams?.vlog ?? null}
       viewer={{
         id: user.id,
         username: profile.username,

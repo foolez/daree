@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { VlogMenu } from "@/components/ui/VlogMenu";
+import { DeleteVlogDialog } from "@/components/ui/DeleteVlogDialog";
+import { useToast } from "@/components/ui/Toast";
 
 type Viewer = {
   id: string;
@@ -158,6 +161,8 @@ function FullscreenPlayer(props: {
   open: boolean;
   onClose: () => void;
   vlog: (Vlog & { author: Member | null }) | null;
+  isOwnVlog: boolean;
+  onDelete?: (vlogId: string) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -190,12 +195,20 @@ function FullscreenPlayer(props: {
             <div className="text-[11px] text-[#888888]">{timeAgo(props.vlog.createdAt)}</div>
           </div>
         </div>
-        <button
-          onClick={props.onClose}
-          className="rounded-full border border-[#2A2A2A] bg-black/40 px-3 py-1 text-xs text-white"
-        >
-          Close
-        </button>
+        <div className="flex items-center gap-2">
+          {props.isOwnVlog && props.onDelete && (
+            <VlogMenu
+              isOwnVlog
+              onDelete={() => props.onDelete?.(props.vlog!.id)}
+            />
+          )}
+          <button
+            onClick={props.onClose}
+            className="rounded-full border border-[#2A2A2A] bg-black/40 px-3 py-1 text-xs text-white"
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       <div className="absolute inset-0 mx-auto flex max-w-md items-center justify-center px-4">
@@ -222,6 +235,7 @@ function FullscreenPlayer(props: {
 type Tab = "feed" | "leaderboard" | "members";
 
 export function ChallengeClient(props: {
+  initialOpenVlogId?: string | null;
   viewer: Viewer;
   challenge: Challenge;
   members: Member[];
@@ -241,8 +255,13 @@ export function ChallengeClient(props: {
   >(props.initialFeed.reactionCounts);
   const [reacting, setReacting] = useState<string | null>(null);
 
-  const [playerOpen, setPlayerOpen] = useState(false);
-  const [playerVlogId, setPlayerVlogId] = useState<string | null>(null);
+  const [playerOpen, setPlayerOpen] = useState(!!props.initialOpenVlogId);
+  const [playerVlogId, setPlayerVlogId] = useState<string | null>(
+    props.initialOpenVlogId ?? null
+  );
+  const [deleteDialogVlogId, setDeleteDialogVlogId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const toast = useToast();
 
   const memberById = useMemo(() => {
     const map = new Map<string, Member>();
@@ -304,6 +323,26 @@ export function ChallengeClient(props: {
     setReactionCounts(data.reactionCounts ?? {});
   }
 
+  async function deleteVlog(vlogId: string) {
+    if (deleting) return;
+    setDeleting(true);
+    const res = await fetch(`/api/vlogs/${vlogId}`, { method: "DELETE" });
+    setDeleting(false);
+    setDeleteDialogVlogId(null);
+    setPlayerOpen(false);
+    setPlayerVlogId(null);
+    if (!res.ok) {
+      toast.showToast("Something went wrong. Try again.", "error");
+      return;
+    }
+    toast.showToast("Vlog deleted. Post before midnight to keep streak.", "warning");
+    await refreshFeed();
+  }
+
+  function openDeleteDialog(vlogId: string) {
+    setDeleteDialogVlogId(vlogId);
+  }
+
   async function toggleReaction(vlogId: string, emoji: string) {
     if (reacting) return;
     setReacting(vlogId);
@@ -329,6 +368,7 @@ export function ChallengeClient(props: {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   const selectedVlog =
     playerVlogId && feedVlogs.find((v) => v.id === playerVlogId)
@@ -496,6 +536,10 @@ export function ChallengeClient(props: {
                             </div>
                           </div>
                         </div>
+                        <VlogMenu
+                          isOwnVlog={v.userId === props.viewer.id}
+                          onDelete={() => openDeleteDialog(v.id)}
+                        />
                       </div>
 
                       <button
@@ -692,6 +736,15 @@ export function ChallengeClient(props: {
         open={playerOpen}
         onClose={() => setPlayerOpen(false)}
         vlog={selectedVlog}
+        isOwnVlog={!!(selectedVlog && selectedVlog.userId === props.viewer.id)}
+        onDelete={openDeleteDialog}
+      />
+
+      <DeleteVlogDialog
+        open={!!deleteDialogVlogId}
+        onClose={() => setDeleteDialogVlogId(null)}
+        onConfirm={() => deleteDialogVlogId && deleteVlog(deleteDialogVlogId)}
+        loading={deleting}
       />
 
       <style jsx global>{`
