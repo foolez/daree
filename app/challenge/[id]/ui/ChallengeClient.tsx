@@ -466,11 +466,11 @@ export function ChallengeClient(props: {
               }}
               className="flex flex-1 items-center gap-2 transition-colors hover:opacity-80"
             >
-              <IconLock className="shrink-0 text-[#6B6B6B]" />
+              <span className="shrink-0 text-[#6B6B6B]"><IconLock /></span>
               <span className="font-mono text-[13px] text-[#6B6B6B]">
                 {props.challenge.inviteCode}
               </span>
-              <IconCopy className="h-3.5 w-3.5 shrink-0 text-[#6B6B6B]" />
+              <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[#6B6B6B]"><IconCopy /></span>
             </button>
             <button
               onClick={share}
