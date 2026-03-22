@@ -3,89 +3,99 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-function IconHome({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" className={className ?? "h-5 w-5"}>
-      <path d="M4 10.5L12 4l8 6.5V20a1 1 0 01-1 1h-5v-6H10v6H5a1 1 0 01-1-1v-9.5z" />
-    </svg>
-  );
-}
-
-function IconCompass({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className ?? "h-5 w-5"}>
-      <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconCamera({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className ?? "h-7 w-7"}>
-      <path d="M7 7h10l1.5 2H21v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9h2.5L7 7z" strokeLinejoin="round" />
-      <path d="M12 18a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function Avatar({ url, username }: { url: string | null; username: string }) {
-  const initial = (username || "U").trim().charAt(0).toUpperCase();
-  if (url) {
-    return (
-      <span className="inline-flex h-5 w-5 shrink-0 overflow-hidden rounded-full">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={username} className="h-full w-full object-cover" />
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2D5A3D] text-[10px] font-semibold text-white">
-      {initial}
-    </span>
-  );
-}
-
 export function BottomNav(props: { profile: { avatarUrl: string | null; username: string } }) {
   const pathname = usePathname();
+  const onHome = pathname === "/dashboard";
+  const onExplore = pathname === "/explore";
+  const onRecord = pathname === "/record";
   const onProfile = pathname?.startsWith("/profile");
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#1E1E1E] bg-[#0A0A0A]/90 backdrop-blur-[20px]"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
+      className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#1E1E1E] bg-[#0A0A0A] backdrop-blur-[20px]"
+      style={{
+        height: "calc(68px + env(safe-area-inset-bottom, 0px))",
+        paddingBottom: "env(safe-area-inset-bottom, 0)"
+      }}
     >
-      <div
-        className="mx-auto grid max-w-md grid-cols-4 items-center justify-items-center"
-        style={{ height: 68 }}
-      >
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 py-2" aria-label="Home">
-          <IconHome className={pathname === "/dashboard" ? "text-white" : "text-[#6B6B6B]"} />
-          {pathname === "/dashboard" && <span className="h-1 w-1 rounded-full bg-[#00FF88]" />}
+      <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ height: 68 }}>
+        {/* Home */}
+        <Link
+          href="/dashboard"
+          className="flex flex-col items-center justify-center gap-1 py-2"
+          aria-label="Home"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={onHome ? "white" : "#6B6B6B"}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
+          </svg>
+          {onHome && <span className="h-1 w-1 rounded-full bg-[#00FF88]" />}
         </Link>
-        <Link href="/explore" className="flex flex-col items-center gap-1 py-2" aria-label="Explore">
-          <IconCompass className={pathname === "/explore" ? "text-white" : "text-[#6B6B6B]"} />
-          {pathname === "/explore" && <span className="h-1 w-1 rounded-full bg-[#00FF88]" />}
+
+        {/* Explore */}
+        <Link
+          href="/explore"
+          className="flex flex-col items-center justify-center gap-1 py-2"
+          aria-label="Explore"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={onExplore ? "white" : "#6B6B6B"}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M14.828 9.172l-1.414 5.656-5.656 1.414 1.414-5.656z" />
+          </svg>
+          {onExplore && <span className="h-1 w-1 rounded-full bg-[#00FF88]" />}
         </Link>
+
+        {/* Record - center, raised green circle */}
         <Link
           href="/record"
-          className="-mt-6 flex h-12 w-12 items-center justify-center rounded-full bg-[#00FF88] text-black"
+          className="-mt-6 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#00FF88]"
           aria-label="Record"
         >
-          <IconCamera className="h-6 w-6" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="black"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+          </svg>
         </Link>
-        <Link href="/profile" className="flex flex-col items-center gap-1 py-2" aria-label="Profile">
-          {onProfile ? (
-            <>
-              <Avatar url={props.profile.avatarUrl} username={props.profile.username} />
-              <span className="h-1 w-1 rounded-full bg-[#00FF88]" />
-            </>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-[#6B6B6B]">
-              <path d="M20 21a8 8 0 10-16 0" strokeLinecap="round" />
-              <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" />
-            </svg>
-          )}
+
+        {/* Profile */}
+        <Link
+          href="/profile"
+          className="flex flex-col items-center justify-center gap-1 py-2"
+          aria-label="Profile"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={onProfile ? "white" : "#6B6B6B"}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          {onProfile && <span className="h-1 w-1 rounded-full bg-[#00FF88]" />}
         </Link>
       </div>
     </nav>
