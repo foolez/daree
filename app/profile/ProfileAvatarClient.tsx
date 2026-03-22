@@ -18,12 +18,16 @@ type Props = {
   initialAvatarUrl: string | null;
   displayName: string;
   username: string;
+  size?: number;
+  centered?: boolean;
 };
 
 export function ProfileAvatarClient({
   initialAvatarUrl,
   displayName,
-  username
+  username,
+  size = 56,
+  centered = false
 }: Props) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [uploading, setUploading] = useState(false);
@@ -78,14 +82,17 @@ export function ProfileAvatarClient({
     username?.trim()[0]?.toUpperCase() ??
     "?";
 
+  const textSize = size <= 40 ? "text-base" : size <= 56 ? "text-xl" : "text-2xl";
+
   return (
     <>
-      <div className="flex flex-col items-start gap-2">
+      <div className={`flex flex-col gap-2 ${centered ? "items-center" : "items-start"}`}>
         <div className="relative">
           <button
             type="button"
             onClick={openPicker}
-            className="relative h-14 w-14 overflow-hidden rounded-full border border-[#1E1E1E] bg-[#111111]"
+            className="relative overflow-hidden rounded-full border border-[#1E1E1E] bg-[#111111]"
+            style={{ width: size, height: size }}
             aria-label="Change profile photo"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,30 +104,29 @@ export function ProfileAvatarClient({
               />
             ) : (
               <div
-                className="flex h-full w-full items-center justify-center text-xl font-semibold text-white"
+                className={`flex h-full w-full items-center justify-center font-semibold text-white ${textSize}`}
                 style={{ backgroundColor: avatarColor(username) }}
               >
                 {initials}
               </div>
             )}
             {uploading && (
-              <span className="pointer-events-none absolute inset-0 rounded-full bg-black/50 text-[10px] text-white">
-                <span className="flex h-full w-full items-center justify-center">
-                  Uploading…
-                </span>
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-[10px] text-white">
+                Uploading…
               </span>
             )}
           </button>
 
-          {/* Camera quick action (mobile friendly) */}
+          {/* Camera overlay - 24px at bottom-right */}
           <button
             type="button"
             onClick={openCamera}
             disabled={uploading}
-            className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#1E1E1E] bg-[#111111] text-[11px] text-white disabled:opacity-60"
+            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-[#1A1A1A] disabled:opacity-60"
+            style={{ width: 24, height: 24 }}
             aria-label="Take a photo"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3 w-3 text-white">
               <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
               <circle cx="12" cy="13" r="4" />
             </svg>
