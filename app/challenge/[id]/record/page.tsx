@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
+type Mode = "picker" | "vlog" | "selfie";
 type Phase = "record" | "preview";
 
 function clamp(n: number, min: number, max: number) {
@@ -45,6 +47,39 @@ function IconTrash() {
   );
 }
 
+function IconVideo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-8 w-8">
+      <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconCameraPhoto() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-8 w-8">
+      <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0zM19 9v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconCheckCircle() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-8 w-8">
+      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconArrowRight() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+      <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function Confetti() {
   const pieces = useMemo(() => Array.from({ length: 22 }, (_, i) => i), []);
   return (
@@ -71,8 +106,13 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
+  const selfieVideoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const selfieStreamRef = useRef<MediaStream | null>(null);
 
+  const [mode, setMode] = useState<Mode>("picker");
   const [phase, setPhase] = useState<Phase>("record");
+  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
   const [status, setStatus] = useState<
     "idle" | "preparing" | "recording" | "paused" | "uploading" | "success" | "error"
   >("preparing");
@@ -91,6 +131,12 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
   const [caption, setCaption] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [postedStreak, setPostedStreak] = useState<number | null>(null);
+
+  const [selfieStream, setSelfieStream] = useState<MediaStream | null>(null);
+  const [selfieFacingMode, setSelfieFacingMode] = useState<"user" | "environment">("user");
+  const [selfieCaptured, setSelfieCaptured] = useState<string | null>(null);
+  const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
+  const toast = useToast();
 
   const mediaSupported =
     typeof window !== "undefined" &&
@@ -140,13 +186,32 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
       setStatus("idle");
       return;
     }
-    startCamera(facingMode).catch(() => {});
+    if (mode === "vlog") {
+      startCamera(facingMode).catch(() => {});
+    }
     return () => {
       recorderRef.current?.stop();
       stream?.getTracks().forEach((t) => t.stop());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facingMode]);
+  }, [facingMode, mode]);
+
+  useEffect(() => {
+    if (mode !== "selfie" || selfieCaptured) return;
+    let s: MediaStream | null = null;
+    navigator.mediaDevices?.getUserMedia({ video: { facingMode: selfieFacingMode } })
+      .then((stream) => {
+        s = stream;
+        selfieStreamRef.current = stream;
+        setSelfieStream(stream);
+        if (selfieVideoRef.current) {
+          selfieVideoRef.current.srcObject = stream;
+          selfieVideoRef.current.play().catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => { s?.getTracks().forEach((t) => t.stop()); selfieStreamRef.current = null; };
+  }, [mode, selfieCaptured, selfieFacingMode]);
 
   function startSegment() {
     if (!stream) return;
@@ -219,6 +284,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     form.append("challenge_id", challengeId);
     form.append("caption", caption.slice(0, 200));
     form.append("duration_seconds", String(Math.round(totalRecordedMs / 1000)));
+    form.append("proof_type", "vlog");
 
     // Fake progress (fetch doesn't expose upload progress). Keeps UI alive.
     const progTimer = setInterval(() => {
@@ -268,6 +334,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     form.append("challenge_id", challengeId);
     form.append("caption", caption.slice(0, 200));
     form.append("duration_seconds", "0");
+    form.append("proof_type", "vlog");
 
     const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));
@@ -286,25 +353,304 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     }, 1100);
   }
 
+  async function submitCheckin() {
+    setCheckinModalOpen(false);
+    const res = await fetch("/api/vlogs/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge_id: challengeId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return;
+    }
+    toast.showToast("Checked in. Your streak is safe — but your ranking isn't.", "warning");
+    setTimeout(() => {
+      window.location.href = `/challenge/${challengeId}`;
+    }, 800);
+  }
+
+  async function postSelfie() {
+    if (!selfieBlob) return;
+    setStatus("uploading");
+    setError(null);
+    setUploadProgress(0);
+
+    const file = new File([selfieBlob], `${todayIsoDate()}_selfie.jpg`, { type: "image/jpeg" });
+    const form = new FormData();
+    form.append("file", file);
+    form.append("challenge_id", challengeId);
+    form.append("caption", caption.slice(0, 200));
+    form.append("proof_type", "selfie");
+
+    const progTimer = setInterval(() => setUploadProgress((p) => (p < 90 ? p + 3 : p)), 220);
+    const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    clearInterval(progTimer);
+
+    if (!res.ok) {
+      setStatus("error");
+      setError(data.error ?? "Upload failed.");
+      return;
+    }
+
+    setUploadProgress(100);
+    setPostedStreak(data.current_streak ?? null);
+    setStatus("success");
+    setTimeout(() => { window.location.href = `/challenge/${challengeId}`; }, 1100);
+  }
+
   const progressPct = clamp((totalRecordedMs / maxMs) * 100, 0, 100);
+
+  if (mode === "picker") {
+    return (
+      <main className="min-h-screen bg-[#0A0A0A] text-white">
+        <div className="mx-auto max-w-md px-5 pb-10 pt-8">
+          <Link
+            href={`/challenge/${challengeId}`}
+            className="mb-6 inline-flex items-center gap-2 text-[#6B6B6B]"
+          >
+            <span className="text-xl">←</span>
+            <span className="text-[14px]">Back</span>
+          </Link>
+
+          <h1 className="mb-2 text-[20px] font-bold">Post your proof</h1>
+          <p className="mb-6 text-[14px] text-[#6B6B6B]">Choose how you want to check in today</p>
+
+          <div className="space-y-4">
+            <button
+              onClick={() => setMode("vlog")}
+              className="flex w-full items-center justify-between rounded-2xl border border-[#1E1E1E] bg-[#111111] px-5 py-5 transition-colors hover:bg-[#1A1A1A]"
+            >
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#00FF88] text-black">
+                  <IconVideo />
+                </span>
+                <div className="text-left">
+                  <div className="text-[16px] font-bold text-white">Record a vlog</div>
+                  <div className="text-[13px] text-[#6B6B6B]">Talk about your day · +3 pts</div>
+                </div>
+              </div>
+              <span className="text-[#00FF88]"><IconArrowRight /></span>
+            </button>
+
+            <button
+              onClick={() => setMode("selfie")}
+              className="flex w-full items-center justify-between rounded-2xl border border-[#1E1E1E] bg-[#111111] px-5 py-4 transition-colors hover:bg-[#1A1A1A]"
+            >
+              <div className="flex items-center gap-4">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#4A9EFF] text-white">
+                  <IconCameraPhoto />
+                </span>
+                <div className="text-left">
+                  <div className="text-[16px] font-bold text-white">Take a selfie</div>
+                  <div className="text-[13px] text-[#6B6B6B]">Quick photo proof · +2 pts</div>
+                </div>
+              </div>
+              <span className="text-[#4A9EFF]"><IconArrowRight /></span>
+            </button>
+
+            <button
+              onClick={() => setCheckinModalOpen(true)}
+              className="flex w-full items-center justify-between rounded-xl border border-[#1E1E1E] bg-[#0D0D0D] px-5 py-3 transition-colors hover:bg-[#111111]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg text-[#6B6B6B]">
+                  <IconCheckCircle />
+                </span>
+                <div className="text-left">
+                  <div className="text-[15px] text-[#6B6B6B]">I survived today</div>
+                  <div className="text-[13px] text-[#3A3A3A]">Keeps streak alive · no points</div>
+                </div>
+              </div>
+              <span className="text-[#6B6B6B]"><IconArrowRight /></span>
+            </button>
+          </div>
+        </div>
+
+        {checkinModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5">
+            <div className="w-full max-w-[320px] rounded-[20px] border border-[#1E1E1E] bg-[#111111] p-7">
+              <div className="mb-4 flex justify-center text-[40px]">👀</div>
+              <h2 className="mb-3 text-center text-[20px] font-bold text-white">Are you sure?</h2>
+              <p className="mb-6 text-center text-[15px] leading-relaxed text-[#6B6B6B]">
+                This keeps your streak alive, but you&apos;ll earn zero points today. Your ranking won&apos;t move.
+                <br /><br />
+                Everyone in your group will see you took the easy way out.
+                <br /><br />
+                A 15-second selfie takes less time than reading this popup.
+                <br /><br />
+                Still want to check in without proof?
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setCheckinModalOpen(false); setMode("selfie"); }}
+                  className="flex h-12 w-full items-center justify-center rounded-xl bg-[#00FF88] text-[16px] font-semibold text-black"
+                >
+                  Take a selfie instead
+                </button>
+                <button
+                  onClick={submitCheckin}
+                  className="flex h-10 w-full items-center justify-center rounded-xl text-[14px] text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A]"
+                >
+                  Yes, just check me in
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  if (mode === "selfie") {
+    const showPreview = !!selfieCaptured;
+    return (
+      <main className="min-h-screen bg-black text-white">
+        <div className="fixed left-0 right-0 top-0 z-20 mx-auto flex max-w-md items-center justify-between px-4 py-4">
+          <button
+            onClick={() => { setMode("picker"); selfieStreamRef.current?.getTracks().forEach((t) => t.stop()); selfieStreamRef.current = null; setSelfieStream(null); setSelfieCaptured(null); setSelfieBlob(null); }}
+            className="rounded-2xl border border-[#2A2A2A] bg-black/40 px-3 py-2 text-xs text-white"
+          >
+            Back
+          </button>
+          <button
+            onClick={async () => {
+              const next = selfieFacingMode === "user" ? "environment" : "user";
+              selfieStreamRef.current?.getTracks().forEach((t) => t.stop());
+              const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next } });
+              selfieStreamRef.current = stream;
+              setSelfieFacingMode(next);
+              setSelfieStream(stream);
+              if (selfieVideoRef.current) { selfieVideoRef.current.srcObject = stream; selfieVideoRef.current.play().catch(() => {}); }
+            }}
+            className="rounded-2xl border border-[#2A2A2A] bg-black/40 p-2 text-white"
+            aria-label="Flip camera"
+          >
+            <IconFlip />
+          </button>
+        </div>
+
+        {!showPreview ? (
+          <div className="mx-auto flex min-h-screen max-w-md flex-col">
+            <div className="relative flex-1">
+              <video
+                ref={selfieVideoRef}
+                className="h-full w-full object-cover"
+                muted
+                playsInline
+                style={{ transform: "scaleX(-1)" }}
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+            <div className="border-t border-[#2A2A2A] bg-black/80 px-5 py-8 backdrop-blur">
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    const v = selfieVideoRef.current;
+                    const c = canvasRef.current;
+                    if (!v || !c || !v.videoWidth) return;
+                    c.width = v.videoWidth;
+                    c.height = v.videoHeight;
+                    const ctx = c.getContext("2d");
+                    if (!ctx) return;
+                    ctx.translate(c.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(v, 0, 0);
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    c.toBlob(
+                      (blob) => {
+                        if (!blob) return;
+                        setSelfieBlob(blob);
+                        setSelfieCaptured(URL.createObjectURL(blob));
+                        selfieStreamRef.current?.getTracks().forEach((t) => t.stop());
+                        selfieStreamRef.current = null;
+                        setSelfieStream(null);
+                      },
+                      "image/jpeg",
+                      0.9
+                    );
+                  }}
+                  className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-white/20"
+                >
+                  <div className="h-14 w-14 rounded-full bg-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-10 pt-20">
+            <div className="relative overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#0A0A0A]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={selfieCaptured} alt="Selfie" className="w-full object-cover" style={{ aspectRatio: "4/3", transform: "scaleX(-1)" }} />
+            </div>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              maxLength={200}
+              placeholder="Add a caption (optional)"
+              rows={3}
+              className="mt-5 w-full resize-none rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-4 text-sm outline-none focus:border-[#4A9EFF]"
+            />
+            {status === "uploading" && (
+              <div className="mt-4 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4">
+                <p className="text-sm font-semibold">Posting your selfie...</p>
+                <div className="mt-3 h-2 w-full rounded-full bg-black/40">
+                  <div className="h-2 rounded-full bg-[#4A9EFF]" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              </div>
+            )}
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => { setSelfieCaptured(null); setSelfieBlob(null); setSelfieFacingMode("user"); navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then((s) => { selfieStreamRef.current = s; setSelfieStream(s); if (selfieVideoRef.current) { selfieVideoRef.current.srcObject = s; selfieVideoRef.current.play(); } }); }}
+                className="flex-1 rounded-2xl border border-[#2A2A2A] px-4 py-3 text-sm font-semibold text-white"
+              >
+                Retake
+              </button>
+              <button
+                onClick={postSelfie}
+                disabled={status === "uploading"}
+                className="flex-1 rounded-2xl bg-[#4A9EFF] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                Post Selfie
+              </button>
+            </div>
+          </div>
+        )}
+
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-black text-white">
       {/* top overlay */}
       <div className="fixed left-0 right-0 top-0 z-20 mx-auto flex max-w-md items-center justify-between px-4 py-4">
-        <Link
-          href={`/challenge/${challengeId}`}
-          className="rounded-2xl border border-[#2A2A2A] bg-black/40 px-3 py-2 text-xs text-white"
-          onClick={(e) => {
+        <button
+          onClick={() => {
             if (status === "recording") {
-              e.preventDefault();
               const ok = window.confirm("Cancel recording?");
-              if (ok) window.location.href = `/challenge/${challengeId}`;
+              if (ok) {
+                setMode("picker");
+                setPhase("record");
+                setSegments([]);
+                setSegmentMs([]);
+                setCombinedUrl(null);
+                setCaption("");
+              }
+            } else {
+              setMode("picker");
+              setPhase("record");
+              setSegments([]);
+              setSegmentMs([]);
+              setCombinedUrl(null);
+              setCaption("");
             }
           }}
+          className="rounded-2xl border border-[#2A2A2A] bg-black/40 px-3 py-2 text-xs text-white"
         >
-          Cancel
-        </Link>
+          Back
+        </button>
 
         <div className="text-xs text-[#888888]">
           {phase === "record" ? "Recording" : "Preview"}

@@ -32,17 +32,19 @@ type Member = {
   role: string;
   currentStreak: number;
   totalVlogs: number;
+  totalPoints?: number;
 };
 
 type Vlog = {
   id: string;
   userId: string;
-  videoUrl: string;
+  videoUrl: string | null;
   thumbnailUrl: string | null;
   caption: string | null;
   durationSeconds: number | null;
   dayNumber: number | null;
   createdAt: string;
+  proofType: "vlog" | "selfie" | "checkin";
 };
 
 const EMOJIS = ["🔥", "💪", "👀", "😤", "❤️"] as const;
@@ -243,21 +245,30 @@ function FullscreenPlayer(props: {
       </div>
 
       <div className="absolute inset-0 mx-auto flex max-w-md items-center justify-center px-4">
-        <video
-          ref={videoRef}
-          src={props.vlog.videoUrl}
-          className="max-h-[82vh] w-full rounded-2xl border border-[#2A2A2A] bg-black"
-          playsInline
-          loop
-          muted={false}
-          onClick={(e) => {
-            e.stopPropagation();
-            const v = videoRef.current;
-            if (!v) return;
-            if (v.paused) v.play().catch(() => {});
-            else v.pause();
-          }}
-        />
+        {props.vlog.proofType === "selfie" && props.vlog.videoUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={props.vlog.videoUrl}
+            alt="Selfie"
+            className="max-h-[82vh] w-full rounded-2xl border border-[#2A2A2A] object-contain bg-black"
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            src={props.vlog.videoUrl ?? undefined}
+            className="max-h-[82vh] w-full rounded-2xl border border-[#2A2A2A] bg-black"
+            playsInline
+            loop
+            muted={false}
+            onClick={(e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              if (v.paused) v.play().catch(() => {});
+              else v.pause();
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -324,8 +335,10 @@ export function ChallengeClient(props: {
 
   const leaderboard = useMemo(() => {
     const sorted = [...props.members].sort((a, b) => {
-      if (b.currentStreak !== a.currentStreak) return b.currentStreak - a.currentStreak;
-      return b.totalVlogs - a.totalVlogs;
+      const ap = a.totalPoints ?? 0;
+      const bp = b.totalPoints ?? 0;
+      if (bp !== ap) return bp - ap;
+      return (b.currentStreak ?? 0) - (a.currentStreak ?? 0);
     });
     return sorted;
   }, [props.members]);
@@ -514,11 +527,11 @@ export function ChallengeClient(props: {
                 const posted = postedTodayUserIds.has(m.userId);
                 const name = m.displayName || m.username;
                 return (
-                  <button
+                    <button
                     key={m.userId}
                     onClick={() => {
                       const vlog = feedVlogs.find((v) => v.userId === m.userId);
-                      if (!vlog) return;
+                      if (!vlog || vlog.proofType === "checkin") return;
                       setPlayerVlogId(vlog.id);
                       setPlayerOpen(true);
                     }}
@@ -552,6 +565,57 @@ export function ChallengeClient(props: {
                 {feedVlogs.map((v) => {
                   const author = memberById.get(v.userId) ?? null;
                   const counts = reactionCounts[v.id] ?? {};
+                  const proofType = v.proofType ?? "vlog";
+
+                  if (proofType === "checkin") {
+                    return (
+                      <div
+                        key={v.id}
+                        className="rounded-xl border border-[#1E1E1E] bg-[#0D0D0D] px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <Avatar
+                              name={author?.displayName || author?.username || "Member"}
+                              url={author?.avatarUrl ?? null}
+                              size={28}
+                            />
+                            <span className="text-[14px] text-[#6B6B6B]">
+                              {author?.displayName || author?.username || "Member"} checked in today
+                            </span>
+                          </div>
+                          <VlogMenu
+                            isOwnVlog={v.userId === props.viewer.id}
+                            onDelete={() => openDeleteDialog(v.id)}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-1">
+                          {EMOJIS.map((e) => {
+                            const count = counts[e] ?? 0;
+                            return (
+                              <button
+                                key={e}
+                                onClick={() => toggleReaction(v.id, e)}
+                                className="flex h-6 items-center gap-1 rounded-full bg-[#1A1A1A] px-2 transition-all duration-150"
+                              >
+                                <span className="text-xs">{e}</span>
+                                {count > 0 && (
+                                  <span className="text-[11px] text-[#6B6B6B]">{count}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const mediaUrl = v.videoUrl || v.thumbnailUrl;
+                  const isSelfie = proofType === "selfie";
+                  const badgeCls = isSelfie
+                    ? "bg-[#4A9EFF] text-white"
+                    : "bg-[#00FF88] text-black";
+
                   return (
                     <div key={v.id}>
                       <div className="flex items-center justify-between gap-2">
@@ -577,36 +641,45 @@ export function ChallengeClient(props: {
                       </div>
 
                       <button
-                        onClick={() => {
-                          setPlayerVlogId(v.id);
-                          setPlayerOpen(true);
-                        }}
+                        onClick={() => { setPlayerVlogId(v.id); setPlayerOpen(true); }}
                         className="relative mt-2 block w-full overflow-hidden rounded-xl bg-black"
-                        aria-label="Play vlog"
+                        aria-label={isSelfie ? "View selfie" : "Play vlog"}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {v.thumbnailUrl ? (
-                          <img
-                            src={v.thumbnailUrl}
-                            alt="Vlog"
-                            className="aspect-video w-full object-cover"
-                          />
+                        {mediaUrl ? (
+                          isSelfie ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={mediaUrl}
+                              alt="Selfie"
+                              className="aspect-[4/3] w-full object-cover"
+                            />
+                          ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={v.thumbnailUrl || mediaUrl}
+                              alt="Vlog"
+                              className="aspect-video w-full object-cover"
+                            />
+                          )
                         ) : (
                           <div className="flex aspect-video w-full items-center justify-center bg-[#111111] text-[#6B6B6B]">
                             Tap to play
                           </div>
                         )}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="rounded-full border border-white/20 bg-black/40 px-4 py-2 text-xs font-semibold text-white">
-                            Play
+                        <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[11px] font-semibold ${badgeCls}`}>
+                          {isSelfie ? "Selfie" : "Vlog"}
+                        </span>
+                        {!isSelfie && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="rounded-full border border-white/20 bg-black/40 px-4 py-2 text-xs font-semibold text-white">
+                              Play
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </button>
 
                       {v.caption && (
-                        <div className="mt-2 text-[14px] text-white">
-                          {v.caption}
-                        </div>
+                        <div className="mt-2 text-[14px] text-white">{v.caption}</div>
                       )}
 
                       <div className="mt-3 flex items-center gap-2">
@@ -675,9 +748,10 @@ export function ChallengeClient(props: {
                         )}
                       </div>
                     </div>
-                    <span className="shrink-0 text-[14px] text-[#6B6B6B]">
-                      🔥 {m.currentStreak}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2 text-[14px] text-[#6B6B6B]">
+                      <span>{m.totalPoints ?? 0} pts</span>
+                      <span>🔥 {m.currentStreak}</span>
+                    </div>
                   </div>
                 );
               })}
@@ -747,7 +821,7 @@ export function ChallengeClient(props: {
           <IconCamera size={24} />
         </div>
         <div className="flex-1 leading-tight">
-          <div className="text-[14px] font-bold text-white">Record today&apos;s vlog</div>
+          <div className="text-[14px] font-bold text-white">Post your proof</div>
           <div className="text-[12px] text-[#6B6B6B]">You haven&apos;t posted yet</div>
         </div>
       </Link>

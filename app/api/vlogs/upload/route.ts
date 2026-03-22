@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   const challenge_id = String(form.get("challenge_id") || "");
   const captionRaw = String(form.get("caption") || "").slice(0, 200);
   const duration_seconds = Number(form.get("duration_seconds") || 0);
+  const proof_type = String(form.get("proof_type") || "vlog");
 
   if (!challenge_id) {
     return NextResponse.json({ error: "challenge_id is required." }, { status: 400 });
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "file is required." }, { status: 400 });
   }
+
+  const isSelfie = proof_type === "selfie";
+  const isVideo = file.type.startsWith("video/");
 
   const { data: challenge, error: challengeError } = await supabase
     .from("challenges")
@@ -58,15 +62,19 @@ export async function POST(request: Request) {
   }
 
   const dn = dayNumber(challenge.start_date);
-  const path = `${challenge_id}/${user.id}/${todayIsoDate()}.webm`;
+  const ext = isSelfie || !isVideo ? "jpg" : "webm";
+  const path = isSelfie
+    ? `${challenge_id}/${user.id}/${todayIsoDate()}_selfie.${ext}`
+    : `${challenge_id}/${user.id}/${todayIsoDate()}.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
+  const contentType = isSelfie ? "image/jpeg" : (file.type || "video/webm");
 
   const { error: uploadError } = await supabase.storage
     .from("vlogs")
     .upload(path, bytes, {
-      contentType: file.type || "video/webm",
+      contentType,
       upsert: true
     });
 
@@ -77,16 +85,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const {
-    data: { publicUrl }
-  } = supabase.storage.from("vlogs").getPublicUrl(path);
+  const { data: { publicUrl } } = supabase.storage.from("vlogs").getPublicUrl(path);
 
   const { error: insertError } = await supabase.from("vlogs").insert({
     challenge_id,
     user_id: user.id,
     video_url: publicUrl,
+    proof_type: isSelfie ? "selfie" : "vlog",
     caption: captionRaw || null,
-    duration_seconds: Number.isFinite(duration_seconds) ? duration_seconds : null,
+    duration_seconds: isSelfie ? null : (Number.isFinite(duration_seconds) ? duration_seconds : null),
     day_number: dn
   });
 
@@ -94,10 +101,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save vlog." }, { status: 500 });
   }
 
-  // Update membership counters (simple MVP behavior).
+  const pointsToAdd = isSelfie ? 2 : 3;
+
   const { data: member } = await supabase
     .from("challenge_members")
-    .select("id, current_streak, longest_streak, total_vlogs")
+    .select("id, current_streak, longest_streak, total_vlogs, total_points")
     .eq("challenge_id", challenge_id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -106,12 +114,14 @@ export async function POST(request: Request) {
     const nextTotal = (member.total_vlogs ?? 0) + 1;
     const nextStreak = (member.current_streak ?? 0) + 1;
     const nextLongest = Math.max(member.longest_streak ?? 0, nextStreak);
+    const nextPoints = (member.total_points ?? 0) + pointsToAdd;
     await supabase
       .from("challenge_members")
       .update({
         total_vlogs: nextTotal,
         current_streak: nextStreak,
-        longest_streak: nextLongest
+        longest_streak: nextLongest,
+        total_points: nextPoints
       })
       .eq("id", member.id);
   }

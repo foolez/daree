@@ -25,7 +25,7 @@ export async function GET(
   const todayStart = startOfTodayIso();
   const { data: vlogs, error: vlogError } = await supabase
     .from("vlogs")
-    .select("id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at")
+    .select("id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at, proof_type")
     .eq("challenge_id", params.id)
     .gte("created_at", todayStart)
     .order("created_at", { ascending: false });
@@ -38,12 +38,13 @@ export async function GET(
     vlogs?.map((v: any) => ({
       id: v.id as string,
       userId: v.user_id as string,
-      videoUrl: v.video_url as string,
+      videoUrl: (v.video_url ?? null) as string | null,
       thumbnailUrl: (v.thumbnail_url ?? null) as string | null,
       caption: (v.caption ?? null) as string | null,
       durationSeconds: (v.duration_seconds ?? null) as number | null,
       dayNumber: (v.day_number ?? null) as number | null,
-      createdAt: v.created_at as string
+      createdAt: v.created_at as string,
+      proofType: (v.proof_type ?? "vlog") as "vlog" | "selfie" | "checkin"
     })) ?? [];
 
   const vlogIds = vlogList.map((v) => v.id);

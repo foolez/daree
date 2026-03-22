@@ -47,7 +47,7 @@ export function RecordClient({ challenges }: { challenges: Challenge[] }) {
               Record
             </h1>
             <p className="mt-1 text-[14px] text-[#6B6B6B]">
-              Choose a challenge to post today&apos;s vlog
+              Choose a challenge to post today&apos;s proof
             </p>
           </div>
           <Link
@@ -150,7 +150,7 @@ export function RecordClient({ challenges }: { challenges: Challenge[] }) {
                       </div>
                     </div>
                     <span className="text-[14px] font-medium text-[#00FF88]">
-                      Record →
+                      Post proof →
                     </span>
                   </Link>
                 )}
