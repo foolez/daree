@@ -70,6 +70,18 @@ function timeAgo(iso: string) {
   return `${days}d ago`;
 }
 
+const INITIAL_COLORS = ["#2D5A3D", "#5A2D4D", "#2D3D5A", "#5A4D2D", "#3D2D5A", "#2D5A5A"] as const;
+
+function avatarColor(username: string): string {
+  let hash = 0;
+  const s = username || "u";
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash << 5) - hash + s.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return INITIAL_COLORS[Math.abs(hash) % INITIAL_COLORS.length];
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
@@ -77,82 +89,101 @@ function initials(name: string) {
   return (parts[0].slice(0, 1) + parts[1].slice(0, 1)).toUpperCase();
 }
 
-function Avatar(props: { name: string; url: string | null; size?: number }) {
+function Avatar(props: {
+  name: string;
+  url: string | null;
+  size?: number;
+  borderColor?: "green" | "gray";
+}) {
+  const [broken, setBroken] = useState(false);
   const size = props.size ?? 36;
-  if (props.url) {
+  const showImg = props.url && !broken;
+  const displayName = props.name || "?";
+  const borderCls =
+    props.borderColor === "green"
+      ? "border-[#00FF88]"
+      : "border-[#2A2A2A]";
+
+  if (showImg) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={props.url}
-        alt={props.name}
+        src={props.url!}
+        alt={displayName}
         width={size}
         height={size}
-        className="rounded-full border border-[#2A2A2A] object-cover"
+        className={`rounded-full border-2 object-cover ${borderCls}`}
+        style={{ width: size, height: size }}
+        onError={() => setBroken(true)}
       />
     );
   }
   return (
     <div
-      className="flex items-center justify-center rounded-full border border-[#2A2A2A] bg-black/40 text-xs font-semibold text-white"
-      style={{ width: size, height: size }}
-      aria-label={props.name}
+      className={`flex items-center justify-center rounded-full border-2 text-xs font-semibold text-white ${borderCls}`}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: avatarColor(displayName)
+      }}
+      aria-label={displayName}
     >
-      {initials(props.name)}
+      {initials(displayName)}
     </div>
+  );
+}
+
+function IconArrowLeft() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-5 w-5">
+      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconLock() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+      <rect x="3" y="11" width="18" height="11" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 11V7a5 5 0 0110 0v4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
 function IconCopy() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M9 9h10v10H9V9z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+      <path d="M9 9h10v10H9V9z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function IconShare() {
+function IconShareExternal() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M16 8a3 3 0 10-2.8-4H13a3 3 0 000 6h.2A3 3 0 0016 8zM6 14a3 3 0 10-2.8-4H3a3 3 0 000 6h.2A3 3 0 006 14zm10 8a3 3 0 10-2.8-4H13a3 3 0 000 6h.2A3 3 0 0016 22z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8 12l8-4M8 12l8 8"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function IconCamera() {
+function IconCamera(props?: { size?: number }) {
+  const size = props?.size ?? 32;
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" aria-hidden="true">
-      <path
-        d="M7 7h10l1.5 2H21v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9h2.5L7 7z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 18a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ width: size, height: size }}>
+      <path d="M7 7h10l1.5 2H21v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9h2.5L7 7z" strokeLinejoin="round" />
+      <path d="M12 18a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconMore() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-5 w-5">
+      <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="18" r="1.5" fill="currentColor" />
     </svg>
   );
 }
@@ -247,7 +278,6 @@ export function ChallengeClient(props: {
   youPostedToday: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("feed");
-  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const [feedVlogs, setFeedVlogs] = useState<Vlog[]>(props.initialFeed.vlogs);
   const [reactionCounts, setReactionCounts] = useState<
@@ -382,13 +412,13 @@ export function ChallengeClient(props: {
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
-      {/* sticky banner */}
-      {!youPostedToday && !bannerDismissed && (
+      {/* banner removed per design */}
+      {false && (
         <div className="sticky top-0 z-40 border-b border-[#2A2A2A] bg-[#FF6B35]">
           <div className="mx-auto flex max-w-md items-center justify-between px-5 py-3 text-sm font-semibold text-black">
             <span>You haven’t posted today’s vlog yet! 📸</span>
             <button
-              onClick={() => setBannerDismissed(true)}
+              onClick={() => {}}
               className="rounded-xl border border-black/20 bg-black/10 px-3 py-1 text-xs font-semibold"
             >
               Dismiss
@@ -398,52 +428,62 @@ export function ChallengeClient(props: {
       )}
 
       <div className="mx-auto max-w-md px-5 pb-36 pt-6">
-        {/* top section */}
-        <header>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight">
-                {props.challenge.title}
-              </h1>
-              <p className="mt-1 text-sm text-[#888888]">
-                Day {dayNumber} of {props.challenge.durationDays} ·{" "}
-                <span className="text-white">{daysRemaining}</span> days left
-              </p>
-            </div>
+        {/* header */}
+        <header className="relative">
+          <div className="flex items-center justify-between">
             <Link
               href="/dashboard"
-              className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-xs text-[#888888]"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-[#6B6B6B]"
+              aria-label="Back"
             >
-              Back
+              <IconArrowLeft />
             </Link>
+            <h1 className="absolute left-1/2 -translate-x-1/2 text-[18px] font-bold tracking-[-0.02em] text-white">
+              {props.challenge.title}
+            </h1>
+            <button
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-[#6B6B6B]"
+              aria-label="More options"
+            >
+              <IconMore />
+            </button>
           </div>
-
-          <div className="mt-3 h-2 w-full rounded-full bg-[#1A1A1A]">
+          <p className="mt-2 text-center text-[14px] text-[#6B6B6B]">
+            Day {dayNumber} of {props.challenge.durationDays} · {daysRemaining} days left
+          </p>
+          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-[#1E1E1E]">
             <div
-              className="h-2 rounded-full bg-gradient-to-r from-[#00FF88] to-[#FF6B35]"
+              className="h-full rounded-full bg-[#00FF88] transition-all duration-200"
               style={{ width: `${Math.round(progress * 100)}%` }}
             />
           </div>
 
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex items-center justify-between gap-2 rounded-lg py-2">
             <button
-              onClick={copyCode}
-              className="inline-flex items-center gap-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-white"
+              onClick={async () => {
+                await copyCode();
+                toast.showToast("Code copied", "success");
+              }}
+              className="flex flex-1 items-center gap-2 transition-colors hover:opacity-80"
             >
-              Code: <span className="font-mono">{props.challenge.inviteCode}</span>
-              <IconCopy />
+              <IconLock className="shrink-0 text-[#6B6B6B]" />
+              <span className="font-mono text-[13px] text-[#6B6B6B]">
+                {props.challenge.inviteCode}
+              </span>
+              <IconCopy className="h-3.5 w-3.5 shrink-0 text-[#6B6B6B]" />
             </button>
             <button
               onClick={share}
-              className="inline-flex items-center gap-2 rounded-full border border-[#2A2A2A] bg-black px-3 py-2 text-xs font-semibold text-white"
+              className="shrink-0 text-[#6B6B6B] hover:text-white"
+              aria-label="Share"
             >
-              Share <IconShare />
+              <IconShareExternal />
             </button>
           </div>
         </header>
 
         {/* tabs */}
-        <div className="mt-6 flex gap-2 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-1">
+        <div className="mt-6 flex border-b border-[#1E1E1E]">
           {(
             [
               { id: "feed", label: "Feed" },
@@ -454,23 +494,25 @@ export function ChallengeClient(props: {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                tab === t.id
-                  ? "bg-black text-[#00FF88]"
-                  : "text-[#888888]"
+              className={`relative flex-1 pb-3 pt-1 text-[14px] font-medium transition-colors ${
+                tab === t.id ? "text-white" : "text-[#6B6B6B]"
               }`}
             >
               {t.label}
+              {tab === t.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#00FF88]" />
+              )}
             </button>
           ))}
         </div>
 
         {tab === "feed" && (
           <section className="mt-5">
-            {/* stories */}
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            {/* story circles */}
+            <div className="-mx-5 flex gap-4 overflow-x-auto px-5 pb-4">
               {props.members.map((m) => {
                 const posted = postedTodayUserIds.has(m.userId);
+                const name = m.displayName || m.username;
                 return (
                   <button
                     key={m.userId}
@@ -480,23 +522,16 @@ export function ChallengeClient(props: {
                       setPlayerVlogId(vlog.id);
                       setPlayerOpen(true);
                     }}
-                    className="flex min-w-[64px] flex-col items-center gap-1"
+                    className="flex shrink-0 flex-col items-center gap-2"
                   >
-                    <div
-                      className={`rounded-full p-[2px] ${
-                        posted ? "bg-[#00FF88]" : "bg-[#2A2A2A]"
-                      }`}
-                    >
-                      <div className="rounded-full bg-[#0A0A0A] p-[2px]">
-                        <Avatar
-                          name={m.displayName || m.username}
-                          url={m.avatarUrl}
-                          size={44}
-                        />
-                      </div>
-                    </div>
-                    <span className="max-w-[64px] truncate text-[11px] text-[#888888]">
-                      {m.displayName || m.username}
+                    <Avatar
+                      name={name}
+                      url={m.avatarUrl}
+                      size={48}
+                      borderColor={posted ? "green" : "gray"}
+                    />
+                    <span className="max-w-[48px] truncate text-[11px] text-[#6B6B6B]">
+                      {name.length > 6 ? `${name.slice(0, 6)}...` : name}
                     </span>
                   </button>
                 );
@@ -505,35 +540,34 @@ export function ChallengeClient(props: {
 
             {/* feed */}
             {feedVlogs.length === 0 ? (
-              <div className="mt-5 rounded-3xl border border-[#2A2A2A] bg-[#1A1A1A] p-5">
-                <p className="text-sm text-[#888888]">
-                  No one has posted yet today. Be the first! 👀
-                </p>
+              <div className="mt-12 flex flex-col items-center justify-center py-12">
+                <div className="mb-3 text-[#3A3A3A]">
+                  <IconCamera />
+                </div>
+                <p className="text-[15px] text-[#6B6B6B]">No vlogs yet today</p>
+                <p className="mt-1 text-[13px] text-[#3A3A3A]">Be the first to post</p>
               </div>
             ) : (
-              <div className="mt-4 grid gap-3">
+              <div className="mt-5 space-y-5">
                 {feedVlogs.map((v) => {
                   const author = memberById.get(v.userId) ?? null;
                   const counts = reactionCounts[v.id] ?? {};
                   return (
-                    <div
-                      key={v.id}
-                      className="overflow-hidden rounded-3xl border border-[#2A2A2A] bg-[#1A1A1A]"
-                    >
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <div className="flex items-center gap-2">
+                    <div key={v.id}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
                           <Avatar
-                            name={author?.displayName || "Member"}
+                            name={author?.displayName || author?.username || "Member"}
                             url={author?.avatarUrl ?? null}
-                            size={34}
+                            size={32}
                           />
-                          <div className="leading-tight">
-                            <div className="text-sm font-semibold">
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[14px] font-bold text-white">
                               {author?.displayName || author?.username || "Member"}
-                            </div>
-                            <div className="text-[11px] text-[#888888]">
+                            </span>
+                            <span className="ml-2 text-[12px] text-[#3A3A3A]">
                               {timeAgo(v.createdAt)}
-                            </div>
+                            </span>
                           </div>
                         </div>
                         <VlogMenu
@@ -547,18 +581,18 @@ export function ChallengeClient(props: {
                           setPlayerVlogId(v.id);
                           setPlayerOpen(true);
                         }}
-                        className="relative block w-full bg-black"
+                        className="relative mt-2 block w-full overflow-hidden rounded-xl bg-black"
                         aria-label="Play vlog"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         {v.thumbnailUrl ? (
                           <img
                             src={v.thumbnailUrl}
-                            alt="Vlog thumbnail"
-                            className="h-56 w-full object-cover"
+                            alt="Vlog"
+                            className="aspect-video w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-56 w-full items-center justify-center bg-black/60 text-sm text-[#888888]">
+                          <div className="flex aspect-video w-full items-center justify-center bg-[#111111] text-[#6B6B6B]">
                             Tap to play
                           </div>
                         )}
@@ -570,28 +604,32 @@ export function ChallengeClient(props: {
                       </button>
 
                       {v.caption && (
-                        <div className="px-4 pb-1 pt-3 text-sm text-white">
+                        <div className="mt-2 text-[14px] text-white">
                           {v.caption}
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 px-4 pb-4 pt-3">
-                        {EMOJIS.map((e) => (
-                          <button
-                            key={e}
-                            onClick={() => toggleReaction(v.id, e)}
-                            className="flex items-center gap-1 rounded-full border border-[#2A2A2A] bg-black/20 px-3 py-1.5 text-xs font-semibold text-white transition active:scale-[0.97]"
-                            style={{
-                              animation:
-                                reacting === v.id ? "bounceTiny 250ms ease-out" : undefined
-                            }}
-                          >
-                            <span className="text-sm">{e}</span>
-                            <span className="text-[#888888]">
-                              {counts[e] ?? 0}
-                            </span>
-                          </button>
-                        ))}
+                      <div className="mt-3 flex items-center gap-2">
+                        {EMOJIS.map((e) => {
+                          const count = counts[e] ?? 0;
+                          return (
+                            <button
+                              key={e}
+                              onClick={() => toggleReaction(v.id, e)}
+                              className="flex h-8 items-center gap-1.5 rounded-full bg-[#1A1A1A] transition-all duration-150 active:scale-[0.97]"
+                              style={{
+                                paddingLeft: 8,
+                                paddingRight: count > 0 ? 10 : 8,
+                                animation: reacting === v.id ? "bounceTiny 250ms ease-out" : undefined
+                              }}
+                            >
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center text-sm">{e}</span>
+                              {count > 0 && (
+                                <span className="text-[12px] text-[#6B6B6B]">{count}</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -603,48 +641,43 @@ export function ChallengeClient(props: {
 
         {tab === "leaderboard" && (
           <section className="mt-5">
-            <div className="grid gap-2">
+            <div className="overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111]">
               {leaderboard.map((m, idx) => {
                 const isYou = m.userId === props.viewer.id;
                 const posted = postedTodayUserIds.has(m.userId);
-                const medal =
-                  idx === 0 ? "text-yellow-300" : idx === 1 ? "text-slate-300" : idx === 2 ? "text-amber-700" : "text-[#888888]";
+                const rankColor =
+                  idx === 0 ? "#FFD700" : idx === 1 ? "#C0C0C0" : idx === 2 ? "#CD7F32" : undefined;
                 return (
                   <div
                     key={m.userId}
-                    className={`flex items-center justify-between rounded-2xl border border-[#2A2A2A] px-4 py-3 ${
-                      isYou ? "bg-[#00FF88]/10" : "bg-[#1A1A1A]"
+                    className={`flex h-[52px] items-center justify-between border-b border-[#1E1E1E] px-4 last:border-b-0 ${
+                      isYou ? "bg-[#00FF88]/8" : ""
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 text-sm font-black ${medal}`}>
-                        #{idx + 1}
-                      </div>
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <span
+                        className="w-6 shrink-0 text-[16px] font-bold"
+                        style={rankColor ? { color: rankColor } : { color: "#6B6B6B" }}
+                      >
+                        {idx + 1}
+                      </span>
                       <Avatar
                         name={m.displayName || m.username}
                         url={m.avatarUrl}
-                        size={34}
+                        size={32}
                       />
-                      <div className="leading-tight">
-                        <div className="text-sm font-semibold">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate text-[14px] font-medium text-white">
                           {m.displayName || m.username}
-                        </div>
-                        <div className="text-[11px] text-[#888888]">
-                          🏆 {m.totalVlogs} vlogs
-                        </div>
+                        </span>
+                        {!posted && (
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF8C00]" />
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      {!posted && (
-                        <span className="rounded-full bg-[#FF6B35] px-2 py-1 text-[10px] font-semibold text-black">
-                          ⚠️ No vlog today
-                        </span>
-                      )}
-                      <span className="rounded-full border border-[#2A2A2A] bg-black/30 px-3 py-1 text-xs font-semibold text-white">
-                        🔥 {m.currentStreak}
-                      </span>
-                    </div>
+                    <span className="shrink-0 text-[14px] text-[#6B6B6B]">
+                      🔥 {m.currentStreak}
+                    </span>
                   </div>
                 );
               })}
@@ -654,45 +687,36 @@ export function ChallengeClient(props: {
 
         {tab === "members" && (
           <section className="mt-5">
-            <div className="grid gap-2">
+            <div className="overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111]">
               {props.members.map((m) => {
                 const posted = postedTodayUserIds.has(m.userId);
                 const isCreator = m.userId === props.challenge.createdBy || m.role === "creator";
                 return (
                   <div
                     key={m.userId}
-                    className="flex items-center justify-between rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-3"
+                    className="flex h-[52px] items-center justify-between border-b border-[#1E1E1E] px-4 last:border-b-0"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <Avatar
                         name={m.displayName || m.username}
                         url={m.avatarUrl}
-                        size={34}
+                        size={32}
                       />
-                      <div className="leading-tight">
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-semibold">
-                            {m.displayName || m.username}
-                          </div>
-                          {isCreator && (
-                            <span className="rounded-full border border-[#2A2A2A] bg-black/30 px-2 py-0.5 text-[10px] font-semibold text-white">
-                              Creator
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-[#888888]">
-                          🔥 {m.currentStreak} · 🏆 {m.totalVlogs}
-                        </div>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate text-[14px] font-medium text-white">
+                          {m.displayName || m.username}
+                        </span>
+                        {isCreator && (
+                          <span className="shrink-0 text-[12px] text-[#3A3A3A]">Creator</span>
+                        )}
                       </div>
                     </div>
                     <span
-                      className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
-                        posted
-                          ? "bg-[#00FF88] text-black"
-                          : "bg-[#FF6B35] text-black"
+                      className={`shrink-0 text-[12px] ${
+                        posted ? "text-[#00FF88]" : "text-[#FF8C00]"
                       }`}
                     >
-                      {posted ? "Posted today ✅" : "Not yet ⚠️"}
+                      {posted ? "✓" : "not yet"}
                     </span>
                   </div>
                 );
@@ -701,36 +725,33 @@ export function ChallengeClient(props: {
 
             <button
               onClick={share}
-              className="mt-4 w-full rounded-2xl border border-[#2A2A2A] bg-black px-4 py-4 text-sm font-semibold text-white"
+              className="mt-4 flex h-12 w-full items-center justify-center rounded-xl border border-[#2A2A2A] bg-transparent text-[14px] font-medium text-white transition-colors hover:bg-[#1A1A1A]"
             >
-              Invite more friends
+              + Invite friends
             </button>
           </section>
         )}
       </div>
 
       {/* Record CTA */}
+      {youPostedToday ? (
+        <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto flex h-14 max-w-md items-center justify-center border-t border-[#1E1E1E] bg-[#111111] px-5">
+          <span className="text-[14px] text-[#6B6B6B]">Posted today ✓</span>
+        </div>
+      ) : (
       <Link
         href={`/challenge/${props.challenge.id}/record`}
-        className="fixed bottom-4 left-0 right-0 z-40 mx-auto w-full max-w-md px-5"
+        className="fixed bottom-0 left-0 right-0 z-40 mx-auto flex h-14 max-w-md items-center gap-3 border-t border-[#1E1E1E] bg-[#111111] px-5"
       >
-        <div
-          className="mx-auto flex items-center justify-center gap-3 rounded-3xl border border-[#2A2A2A] bg-black/80 px-4 py-3 backdrop-blur"
-          style={{
-            animation: !youPostedToday ? "pulseRecord 1.8s ease-in-out infinite" : undefined
-          }}
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#00FF88] text-black">
-            <IconCamera />
-          </div>
-          <div className="leading-tight">
-            <div className="text-sm font-black text-white">Record today’s vlog</div>
-            <div className="text-[11px] text-[#888888]">
-              {youPostedToday ? "Posted today ✅" : "You haven’t posted yet"}
-            </div>
-          </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00FF88] text-black">
+          <IconCamera size={24} />
+        </div>
+        <div className="flex-1 leading-tight">
+          <div className="text-[14px] font-bold text-white">Record today&apos;s vlog</div>
+          <div className="text-[12px] text-[#6B6B6B]">You haven&apos;t posted yet</div>
         </div>
       </Link>
+      )}
 
       <FullscreenPlayer
         open={playerOpen}
