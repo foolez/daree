@@ -32,6 +32,9 @@ export async function POST(request: Request) {
   const duration_days =
     typeof body.duration_days === "number" ? body.duration_days : 0;
   const start_date = typeof body.start_date === "string" ? body.start_date : "";
+  const is_public = body.is_public === true;
+  const parent_challenge_id =
+    typeof body.parent_challenge_id === "string" ? body.parent_challenge_id : null;
 
   if (!title) {
     return NextResponse.json(
@@ -70,7 +73,10 @@ export async function POST(request: Request) {
         start_date,
         end_date: end.toISOString().slice(0, 10),
         created_by: user.id,
-        invite_code
+        invite_code,
+        is_public,
+        status: "active",
+        parent_challenge_id: parent_challenge_id || null
       })
       .select("id, invite_code")
       .single();
@@ -99,6 +105,25 @@ export async function POST(request: Request) {
         { error: "Challenge created but membership failed." },
         { status: 500 }
       );
+    }
+
+    if (parent_challenge_id) {
+      const { data: parentMembers } = await supabase
+        .from("challenge_members")
+        .select("user_id")
+        .eq("challenge_id", parent_challenge_id);
+      const memberIds = (parentMembers ?? [])
+        .map((m: any) => m.user_id as string)
+        .filter((id) => id !== user.id);
+      if (memberIds.length > 0) {
+        await supabase.from("challenge_members").insert(
+          memberIds.map((userId) => ({
+            challenge_id: created.id,
+            user_id: userId,
+            role: "member"
+          }))
+        );
+      }
     }
 
     return NextResponse.json(

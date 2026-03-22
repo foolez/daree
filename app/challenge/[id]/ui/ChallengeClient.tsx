@@ -21,6 +21,9 @@ type Challenge = {
   endDate: string;
   inviteCode: string;
   createdBy: string;
+  isPublic?: boolean;
+  status?: string;
+  parentChallengeId?: string | null;
 };
 
 type Member = {
@@ -276,6 +279,32 @@ function FullscreenPlayer(props: {
 
 type Tab = "feed" | "leaderboard" | "members";
 
+function IconEye() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconLockSmall() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
+      <rect x="3" y="11" width="18" height="11" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 11V7a5 5 0 0110 0v4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconCrown() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-12 w-12">
+      <path d="M2 18l3-6 4 4 5-10 4 6 3-2v12H2z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function ChallengeClient(props: {
   initialOpenVlogId?: string | null;
   viewer: Viewer;
@@ -287,6 +316,7 @@ export function ChallengeClient(props: {
   };
   yourMembership: Member | null;
   youPostedToday: boolean;
+  isCompleted?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("feed");
 
@@ -342,6 +372,9 @@ export function ChallengeClient(props: {
     });
     return sorted;
   }, [props.members]);
+
+  const winner = leaderboard[0];
+  const isCompleted = props.isCompleted ?? false;
 
   async function copyCode() {
     await navigator.clipboard.writeText(props.challenge.inviteCode);
@@ -423,6 +456,98 @@ export function ChallengeClient(props: {
         }
       : null;
 
+  if (isCompleted) {
+    return (
+      <main className="min-h-screen bg-[#0A0A0A] text-white">
+        <div className="mx-auto max-w-md px-5 pb-24 pt-8">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-[#6B6B6B]">
+            <span className="text-xl">←</span>
+            <span className="text-[14px]">Back</span>
+          </Link>
+          <h1 className="mt-6 text-center text-[24px] font-bold">Challenge Complete</h1>
+          <p className="mt-2 text-center text-[16px] text-[#6B6B6B]">{props.challenge.title}</p>
+          <p className="mt-1 text-center text-[14px] text-[#3A3A3A]">
+            {props.challenge.durationDays} days ·{" "}
+            {new Date(props.challenge.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} -{" "}
+            {new Date(props.challenge.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </p>
+
+          {winner && (
+            <div className="mt-8 flex flex-col items-center rounded-2xl border border-[#1E1E1E] bg-[#111111] px-6 py-8">
+              <span className="text-[#FFD700]">
+                <IconCrown />
+              </span>
+              <div className="rounded-full border-4 border-[#FFD700] p-0.5">
+                <Avatar
+                  name={winner.displayName || winner.username}
+                  url={winner.avatarUrl}
+                  size={80}
+                />
+              </div>
+              <p className="mt-3 text-[20px] font-bold text-white">{winner.displayName || winner.username}</p>
+              <p className="mt-1 text-[14px] text-[#6B6B6B]">
+                Winner · {winner.totalPoints ?? 0} pts · {winner.currentStreak} day streak
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111]">
+            <p className="px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-[#6B6B6B]">
+              Final leaderboard
+            </p>
+            {leaderboard.map((m, idx) => {
+              const rankColor = idx === 0 ? "#FFD700" : idx === 1 ? "#C0C0C0" : idx === 2 ? "#CD7F32" : undefined;
+              const isYou = m.userId === props.viewer.id;
+              return (
+                <div
+                  key={m.userId}
+                  className={`flex h-[52px] items-center justify-between border-t border-[#1E1E1E] px-4 ${
+                    isYou ? "bg-[#00FF88]/8" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-6 text-[16px] font-bold"
+                      style={rankColor ? { color: rankColor } : { color: "#6B6B6B" }}
+                    >
+                      {idx + 1}
+                    </span>
+                    <Avatar name={m.displayName || m.username} url={m.avatarUrl} size={32} />
+                    <span className="truncate text-[14px] font-medium text-white">
+                      {m.displayName || m.username}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[14px] text-[#6B6B6B]">
+                    <span>{m.totalPoints ?? 0} pts</span>
+                    <span>{m.currentStreak} streak</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <Link
+              href={`/create?rematch=${props.challenge.id}`}
+              className="flex h-12 w-full items-center justify-center rounded-xl bg-[#00FF88] text-[16px] font-semibold text-black"
+            >
+              Rematch — Same crew, new dare
+            </Link>
+            <button
+              onClick={() => share()}
+              className="flex h-12 w-full items-center justify-center rounded-xl border border-[#2A2A2A] bg-transparent text-[16px] font-medium text-white"
+            >
+              Share Results
+            </button>
+            <Link href="/dashboard" className="block py-3 text-center text-[14px] text-[#6B6B6B]">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
       {/* banner removed per design */}
@@ -451,9 +576,22 @@ export function ChallengeClient(props: {
             >
               <IconArrowLeft />
             </Link>
-            <h1 className="absolute left-1/2 -translate-x-1/2 text-[18px] font-bold tracking-[-0.02em] text-white">
-              {props.challenge.title}
-            </h1>
+            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2">
+              <h1 className="text-[18px] font-bold tracking-[-0.02em] text-white">
+                {props.challenge.title}
+              </h1>
+              {props.challenge.isPublic ? (
+                <span className="flex items-center gap-1 rounded-md bg-[#1E1E1E] px-2 py-0.5 text-[11px] text-[#6B6B6B]">
+                  <IconEye />
+                  Public
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 rounded-md bg-[#1E1E1E] px-2 py-0.5 text-[11px] text-[#6B6B6B]">
+                  <IconLockSmall />
+                  Private
+                </span>
+              )}
+            </div>
             <button
               className="flex min-h-[44px] min-w-[44px] items-center justify-center text-[#6B6B6B]"
               aria-label="More options"

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProfileAvatarClient } from "./ProfileAvatarClient";
+import { BottomNav } from "@/components/BottomNav";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
@@ -561,6 +562,12 @@ export function ProfileClient(props: {
         requests={props.pendingRequests}
         currentUserId={props.profile.id}
         onRespond={() => router.refresh()}
+      />
+      <BottomNav
+        profile={{
+          avatarUrl: props.profile.avatar_url,
+          username: props.profile.username
+        }}
       />
     </main>
   );

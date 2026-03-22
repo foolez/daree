@@ -40,23 +40,33 @@ export default async function DashboardPage() {
         title,
         duration_days,
         start_date,
-        end_date
+        end_date,
+        is_public,
+        status
       )
     `
     )
     .eq("user_id", user.id);
 
+  const today = new Date();
   const challenges =
     memberships
-      ?.map((m: any) => ({
-        id: m.challenges?.id ?? m.challenge_id,
-        title: m.challenges?.title ?? "Untitled Dare",
-        duration_days: m.challenges?.duration_days ?? 0,
-        start_date: m.challenges?.start_date ?? null,
-        end_date: m.challenges?.end_date ?? null,
-        member_count: null as number | null, // filled later
-        your_streak: m.current_streak ?? 0
-      }))
+      ?.map((m: any) => {
+        const c = m.challenges;
+        const endDate = c?.end_date ? new Date(c.end_date) : null;
+        const isCompleted = !!(c?.status === "completed" || (endDate && today > endDate));
+        return {
+          id: c?.id ?? m.challenge_id,
+          title: c?.title ?? "Untitled Dare",
+          duration_days: c?.duration_days ?? 0,
+          start_date: c?.start_date ?? null,
+          end_date: c?.end_date ?? null,
+          member_count: null as number | null,
+          your_streak: m.current_streak ?? 0,
+          is_public: c?.is_public ?? false,
+          is_completed: isCompleted
+        };
+      })
       .filter((c) => !!c.id) ?? [];
 
   const todayStartIso = startOfTodayIso();
@@ -110,12 +120,13 @@ export default async function DashboardPage() {
       postedToday: postedFriendIds.has(u.id as string)
     })) ?? [];
 
-  // Global Top 5 leaderboard: max longest_streak per user
+  // Global Top 5 leaderboard: by total_points across all challenges
   const { data: allMemberships } = await supabase
     .from("challenge_members")
     .select(
       `
         user_id,
+        total_points,
         longest_streak,
         users (
           username,
@@ -132,12 +143,14 @@ export default async function DashboardPage() {
       username: string;
       displayName: string | null;
       avatarUrl: string | null;
+      totalPoints: number;
       longestStreak: number;
     }
   >();
 
   for (const row of allMemberships ?? []) {
     const uId = row.user_id as string;
+    const points = (row.total_points ?? 0) as number;
     const longest = (row.longest_streak ?? 0) as number;
     const u = row.users as any | null;
     const username = (u?.username ?? "") as string;
@@ -151,16 +164,19 @@ export default async function DashboardPage() {
         username,
         displayName,
         avatarUrl,
+        totalPoints: points,
         longestStreak: longest
       });
-    } else if (longest > prev.longestStreak) {
-      prev.longestStreak = longest;
+    } else {
+      prev.totalPoints += points;
+      if (longest > prev.longestStreak) prev.longestStreak = longest;
     }
   }
 
   const globalTop5 = Array.from(leaderboardMap.values())
-    .sort((a, b) => b.longestStreak - a.longestStreak)
-    .slice(0, 5);
+    .sort((a, b) => b.totalPoints - a.totalPoints)
+    .slice(0, 5)
+    .map(({ longestStreak, ...rest }) => ({ ...rest, longestStreak }));
 
   const { count: unreadCount } = await supabase
     .from("notifications")

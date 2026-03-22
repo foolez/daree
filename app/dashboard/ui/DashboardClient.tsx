@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BottomNav } from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
@@ -22,6 +23,8 @@ type ChallengeCard = {
   end_date: string | null;
   member_count: number | null;
   your_streak: number;
+  is_public?: boolean;
+  is_completed?: boolean;
 };
 
 type FriendCircle = {
@@ -37,6 +40,7 @@ type GlobalLeader = {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  totalPoints?: number;
   longestStreak: number;
 };
 
@@ -180,6 +184,22 @@ function IconCamera(props: { className?: string }) {
         stroke="currentColor"
         strokeWidth="1.8"
       />
+    </svg>
+  );
+}
+
+function IconCompass(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={props.className ?? "h-5 w-5"}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -387,7 +407,6 @@ export function DashboardClient(props: {
   const hasChallenges = challenges.length > 0;
 
   const pathname = usePathname();
-  const onProfile = pathname.startsWith("/profile");
 
   const midnight = new Date(nowMs);
   midnight.setHours(24, 0, 0, 0);
@@ -903,12 +922,26 @@ export function DashboardClient(props: {
                     className="block overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-[16px] font-bold tracking-[-0.02em] text-white">
-                        {c.title}
-                      </h3>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <h3 className="truncate text-[16px] font-bold tracking-[-0.02em] text-white">
+                          {c.title}
+                        </h3>
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${c.is_public ? "bg-[#1E1E1E] text-[#6B6B6B]" : "bg-[#1E1E1E] text-[#6B6B6B]"}`}>
+                          {c.is_public ? "Public" : "Private"}
+                        </span>
+                      </div>
                       <span className="inline-flex shrink-0 items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#00FF88]" />
-                        <span className="text-[12px] font-medium text-[#00FF88]">Live</span>
+                        {c.is_completed ? (
+                          <>
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#6B6B6B]" />
+                            <span className="text-[12px] font-medium text-[#6B6B6B]">Done</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#00FF88]" />
+                            <span className="text-[12px] font-medium text-[#00FF88]">Live</span>
+                          </>
+                        )}
                       </span>
                     </div>
 
@@ -974,7 +1007,7 @@ export function DashboardClient(props: {
                         {u.displayName || u.username}
                       </p>
                       <p className="text-[12px] text-[#6B6B6B] tabular-nums">
-                        {u.longestStreak} day streak
+                        {u.totalPoints ?? 0} pts · {u.longestStreak} streak
                       </p>
                     </div>
                   </div>
@@ -995,52 +1028,12 @@ export function DashboardClient(props: {
       </Link>
       </div>
 
-      {/* Bottom nav */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#1E1E1E] bg-[#0A0A0A]/90 backdrop-blur-[20px]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
-      >
-        <div
-          className="mx-auto grid max-w-md grid-cols-3 items-center justify-items-center"
-          style={{ height: 68 }}
-        >
-          <Link
-            href="/dashboard"
-            className="flex flex-col items-center gap-1 py-2"
-            aria-label="Home"
-          >
-            <IconHome
-              className={`h-5 w-5 ${pathname === "/dashboard" ? "text-white" : "text-[#6B6B6B]"}`}
-            />
-            {pathname === "/dashboard" && (
-              <span className="h-1 w-1 rounded-full bg-[#00FF88]" />
-            )}
-          </Link>
-
-          <Link
-            href="/record"
-            className="-mt-6 flex h-12 w-12 items-center justify-center rounded-full bg-[#00FF88] text-black"
-            aria-label="Record"
-          >
-            <IconCamera className="h-6 w-6" />
-          </Link>
-
-          <Link
-            href="/profile"
-            className="flex flex-col items-center gap-1 py-2"
-            aria-label="Profile"
-          >
-            {onProfile ? (
-              <>
-                <Avatar url={props.profile.avatarUrl} username={props.profile.username} size={20} />
-                <span className="h-1 w-1 rounded-full bg-[#00FF88]" />
-              </>
-            ) : (
-              <IconUser className="h-5 w-5 text-[#6B6B6B]" />
-            )}
-          </Link>
-        </div>
-      </nav>
+      <BottomNav
+        profile={{
+          avatarUrl: props.profile.avatarUrl,
+          username: props.profile.username
+        }}
+      />
 
 
       <JoinSheet

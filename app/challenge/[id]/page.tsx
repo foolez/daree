@@ -33,7 +33,7 @@ export default async function ChallengePage({
 
   const { data: challenge } = await supabase
     .from("challenges")
-    .select("id, title, duration_days, start_date, end_date, invite_code, created_by")
+    .select("id, title, duration_days, start_date, end_date, invite_code, created_by, is_public, status, parent_challenge_id")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -62,6 +62,11 @@ export default async function ChallengePage({
 
   // Today’s vlogs for “posted today” status and initial feed.
   const todayStart = startOfTodayIso();
+  const today = new Date();
+  const endDate = challenge ? new Date(challenge.end_date) : null;
+  const isCompleted =
+    !!challenge &&
+    (challenge.status === "completed" || (endDate && today > endDate));
   const { data: vlogs } = await supabase
     .from("vlogs")
     .select(
@@ -120,7 +125,10 @@ export default async function ChallengePage({
         startDate: challenge.start_date,
         endDate: challenge.end_date,
         inviteCode: challenge.invite_code,
-        createdBy: challenge.created_by
+        createdBy: challenge.created_by,
+        isPublic: challenge.is_public ?? false,
+        status: challenge.status ?? "active",
+        parentChallengeId: challenge.parent_challenge_id ?? null
       }}
       members={memberList}
       initialFeed={{
@@ -129,6 +137,7 @@ export default async function ChallengePage({
       }}
       yourMembership={yourMembership}
       youPostedToday={youPostedToday}
+      isCompleted={!!isCompleted}
     />
   );
 }
