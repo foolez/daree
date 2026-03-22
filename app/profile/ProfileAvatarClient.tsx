@@ -2,6 +2,18 @@
 
 import { useRef, useState } from "react";
 
+const INITIAL_COLORS = ["#2D5A3D", "#5A2D4D", "#2D3D5A", "#5A4D2D", "#3D2D5A", "#2D5A5A"] as const;
+
+function avatarColor(username: string): string {
+  let hash = 0;
+  const s = username || "u";
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash << 5) - hash + s.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return INITIAL_COLORS[Math.abs(hash) % INITIAL_COLORS.length];
+}
+
 type Props = {
   initialAvatarUrl: string | null;
   displayName: string;
@@ -73,23 +85,24 @@ export function ProfileAvatarClient({
           <button
             type="button"
             onClick={openPicker}
-            className="relative h-14 w-14 overflow-hidden rounded-full border border-transparent bg-[radial-gradient(circle_at_top,_rgba(0,255,136,0.5),_transparent_55%),rgba(15,23,42,1)] p-[2px]"
+            className="relative h-14 w-14 overflow-hidden rounded-full border border-[#1E1E1E] bg-[#111111]"
             aria-label="Change profile photo"
           >
-            <div className="h-full w-full overflow-hidden rounded-full border border-[#00FF88]/40 bg-[#020617]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName || username}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-[#00FF88]">
-                  {initials}
-                </div>
-              )}
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName || username}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center text-xl font-semibold text-white"
+                style={{ backgroundColor: avatarColor(username) }}
+              >
+                {initials}
+              </div>
+            )}
             {uploading && (
               <span className="pointer-events-none absolute inset-0 rounded-full bg-black/50 text-[10px] text-white">
                 <span className="flex h-full w-full items-center justify-center">
@@ -104,10 +117,13 @@ export function ProfileAvatarClient({
             type="button"
             onClick={openCamera}
             disabled={uploading}
-            className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#2A2A2A] bg-black/80 text-[11px] text-white disabled:opacity-60"
+            className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#1E1E1E] bg-[#111111] text-[11px] text-white disabled:opacity-60"
             aria-label="Take a photo"
           >
-            📷
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
           </button>
         </div>
 

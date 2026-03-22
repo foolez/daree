@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -56,64 +55,90 @@ type NotificationItem = {
   } | null;
 };
 
+const INITIAL_COLORS = ["#2D5A3D", "#5A2D4D", "#2D3D5A", "#5A4D2D", "#3D2D5A", "#2D5A5A"] as const;
+
+function avatarColor(username: string): string {
+  let hash = 0;
+  const s = username || "u";
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash << 5) - hash + s.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return INITIAL_COLORS[Math.abs(hash) % INITIAL_COLORS.length];
+}
+
+function Avatar(props: {
+  url: string | null;
+  username: string;
+  size?: number;
+  className?: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  const size = props.size ?? 32;
+  const initial = (props.username || "U").trim().charAt(0).toUpperCase();
+  const showImg = props.url && !broken;
+  if (showImg) {
+    return (
+      <span
+        className={`inline-flex shrink-0 overflow-hidden rounded-full bg-[#111111] ${props.className ?? ""}`}
+        style={{ width: size, height: size }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={props.url!}
+          alt={props.username}
+          className="h-full w-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white ${props.className ?? ""}`}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: avatarColor(props.username)
+      }}
+    >
+      {initial}
+    </span>
+  );
+}
+
+function IconZap(props: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className={props.className ?? "h-4 w-4"} aria-hidden="true">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  );
+}
+
 function NudgeButton(props: {
   nudged: boolean;
   onClick: () => void;
   username: string;
-  assetSrc: string;
 }) {
   return (
-    <div className="flex flex-col items-center">
-      <motion.button
-        onClick={props.onClick}
-        whileHover={{ scale: 1.05, boxShadow: "0 0 14px rgba(0,255,136,0.3)" }}
-        whileTap={{ scale: [0.9, 1.1, 1] }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-[#1A1A1A] transition-colors duration-300 ${
-          props.nudged
-            ? "border-[#00FF88] bg-[#00FF88]"
-            : "border-[#2A2A2A] bg-[#1A1A1A]"
-        }`}
-        aria-label={`Nudge ${props.username}`}
-      >
-        <span
-          className={`relative inline-flex items-center justify-center rounded-full ${
-            props.nudged ? "animate-pulse" : "bg-[#00FF88]/15"
-          }`}
-        >
-          <Image
-            src={props.assetSrc}
-            alt=""
-            width={16}
-            height={16}
-            className={`h-4 w-4 object-contain ${
-              props.nudged
-                ? ""
-                : "brightness-125 saturate-200 [filter:drop-shadow(0_0_6px_rgba(0,255,136,0.95))]"
-            }`}
-          />
-        </span>
-      </motion.button>
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={props.nudged ? "sent" : "nudge"}
-          initial={{ opacity: 0, y: 3 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -3 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="mt-1 text-[10px] font-bold tracking-widest text-[#888888]"
-        >
-          {props.nudged ? "SENT" : "NUDGE"}
-        </motion.p>
-      </AnimatePresence>
-    </div>
+    <motion.button
+      onClick={props.onClick}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 ${
+        props.nudged ? "bg-[#00FF88] text-black" : "bg-[#1A1A1A] text-[#6B6B6B] border border-[#1E1E1E]"
+      }`}
+      aria-label={`Nudge ${props.username}`}
+    >
+      <IconZap className="h-4 w-4" />
+    </motion.button>
   );
 }
 
-function IconArrowLeft(props: { className?: string }) {
+function IconArrowLeft(props: { className?: string; strokeWidth?: number }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={props.className ?? "h-5 w-5"} aria-hidden="true">
-      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth={props.strokeWidth ?? 2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -198,6 +223,20 @@ function IconPlus(props: { className?: string }) {
       />
     </svg>
   );
+}
+
+function timeAgo(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMs / 3600000);
+  const days = Math.floor(diffMs / 86400000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString();
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -289,30 +328,30 @@ function JoinSheet(props: {
         onClick={close}
         className="absolute inset-0 bg-black/60"
       />
-      <div className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-md rounded-t-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-5">
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#2A2A2A]" />
-        <h3 className="text-lg font-black tracking-tight">Join a Dare</h3>
-        <p className="mt-1 text-sm text-[#888888]">
+      <div className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-md rounded-t-2xl border border-[#1E1E1E] bg-[#111111] p-5">
+        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[#1E1E1E]" />
+        <h3 className="text-[18px] font-bold tracking-[-0.02em] text-white">Join a dare</h3>
+        <p className="mt-1 text-[15px] text-[#6B6B6B]">
           Enter the 6-character invite code.
         </p>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="XXXXXX"
             inputMode="text"
             maxLength={6}
-            className="w-full rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-4 text-center font-mono text-lg tracking-[0.3em] text-white outline-none focus:border-[#00FF88]"
+            className="w-full rounded-xl border border-[#1E1E1E] bg-[#0A0A0A] px-4 py-4 text-center font-mono text-lg tracking-[0.3em] text-white outline-none transition-colors focus:border-[#00FF88]"
           />
           <button
             onClick={join}
             disabled={status === "loading"}
-            className="w-full rounded-2xl bg-[#00FF88] px-4 py-4 text-sm font-semibold text-black disabled:opacity-70"
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-[#00FF88] px-4 py-3 text-[15px] font-semibold text-black transition-all duration-150 active:scale-[0.97] disabled:opacity-70"
           >
-            {status === "loading" ? "Joining..." : "Join Dare 🤝"}
+            {status === "loading" ? "Joining..." : "Join dare"}
           </button>
-          {error && <p className="text-sm text-[#FF3B3B]">{error}</p>}
+          {error && <p className="text-[13px] text-[#FF4444]">{error}</p>}
         </div>
       </div>
     </div>
@@ -361,61 +400,10 @@ export function DashboardClient(props: {
   const ss = remainingSeconds % 60;
   const secured = props.youPostedToday;
 
-  // Inline friend request (mobile-friendly)
-  const [friendSearch, setFriendSearch] = useState("");
-  const [friendSending, setFriendSending] = useState(false);
-  const [friendFeedback, setFriendFeedback] = useState<{
-    kind: "success" | "error";
-    text: string;
-  } | null>(null);
   const [nudgedById, setNudgedById] = useState<Record<string, boolean>>({});
   const [notifications, setNotifications] = useState<NotificationItem[]>(
     props.initialNotifications ?? []
   );
-  const [avatarBroken, setAvatarBroken] = useState(false);
-
-  async function sendFriendRequest() {
-    const typed = friendSearch.trim();
-    if (!typed) {
-      setFriendFeedback({ kind: "error", text: "Type a username first." });
-      return;
-    }
-
-    setFriendSending(true);
-    setFriendFeedback(null);
-
-    const res = await fetch("/api/friends/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: typed })
-    }).catch(() => null);
-
-    if (!res) {
-      setFriendSending(false);
-      setFriendFeedback({
-        kind: "error",
-        text: "Error: Network error. Please try again."
-      });
-      return;
-    }
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg = data.error ?? "Error.";
-      setFriendSending(false);
-      setFriendFeedback({ kind: "error", text: msg });
-      return;
-    }
-
-    setFriendSending(false);
-    setFriendSearch("");
-    setFriendFeedback({
-      kind: "success",
-      text: data.message ?? "Request sent! 🚀"
-    });
-  }
-
   async function nudgeFriend(friend: FriendCircle) {
     if (nudgedById[friend.userId]) return;
     // Optimistic UI for instant, haptic-like feedback.
@@ -427,22 +415,7 @@ export function DashboardClient(props: {
       body: JSON.stringify({ receiver_id: friend.userId })
     }).catch(() => null);
 
-    if (!res) {
-      setFriendFeedback({
-        kind: "error",
-        text: "Database sync issue - check column names."
-      });
-      setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
-      return;
-    }
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      console.error("[dashboard] nudge failed", data);
-      setFriendFeedback({
-        kind: "error",
-        text: "Database sync issue - check column names."
-      });
+    if (!res || !res.ok) {
       setNudgedById((prev) => ({ ...prev, [friend.userId]: false }));
       return;
     }
@@ -639,164 +612,127 @@ export function DashboardClient(props: {
       >
         <header className="flex items-center justify-between">
           <Link href="/profile" className="inline-flex items-center gap-3" aria-label="Go to profile">
-            <span className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A]">
-              {props.profile.avatarUrl && !avatarBroken ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={props.profile.avatarUrl}
-                  alt="Profile avatar"
-                  width={44}
-                  height={44}
-                  className="h-full w-full object-cover"
-                  onError={() => setAvatarBroken(true)}
-                />
-              ) : (
-                <span className="text-sm font-bold text-[#00FF88]">
-                  {(props.profile.displayName || props.profile.username || "U")
-                    .trim()
-                    .charAt(0)
-                    .toUpperCase()}
-                </span>
-              )}
-            </span>
-            <span className="text-sm font-semibold text-white">
-              {props.profile.displayName || props.profile.username}
+            <Avatar
+              url={props.profile.avatarUrl}
+              username={props.profile.username}
+              size={32}
+            />
+            <span className="text-[15px] font-semibold text-white tracking-[-0.02em]">
+              {props.profile.username}
             </span>
           </Link>
 
           <button
             type="button"
             onClick={() => setNotificationsOpen((v) => !v)}
-            className={`relative rounded-2xl border p-2 transition-all duration-200 ease-in-out ${
-              unreadCount > 0
-                ? "border-[#00FF88]/50 bg-[#0E1A14] text-[#00FF88] shadow-[0_0_32px_rgba(0,255,136,0.48)]"
-                : "border-[#2A2A2A] bg-[#1A1A1A] text-[#888888]"
-            }`}
+            className="relative rounded-xl p-2 text-[#6B6B6B] transition-colors duration-150 hover:bg-[#1A1A1A] hover:text-white"
             aria-label="Notifications"
-            style={
-              unreadCount > 0
-                ? { animation: "pulseSoft 1.6s ease-in-out infinite" }
-                : undefined
-            }
           >
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5" strokeWidth={1.5} />
             {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF4B4B] px-1 text-[10px] font-semibold text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
+              <span
+                className="absolute right-0 top-0 h-2 w-2 rounded-full bg-[#FF4444]"
+                aria-hidden
+              />
             )}
           </button>
         </header>
 
         {notificationsOpen && (
           <motion.section
-            initial={{ x: 40, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="mt-4 rounded-3xl border border-[#2A2A2A] bg-[#0D0D0D] p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="mt-4 rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4"
           >
             <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setNotificationsOpen(false)}
-                className="inline-flex items-center gap-1 rounded-xl border border-[#00FF88]/40 px-2 py-1 text-xs font-bold text-[#00FF88]"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A] hover:text-white"
+                aria-label="Back"
               >
-                <IconArrowLeft className="h-4 w-4" />
-                BACK
+                <IconArrowLeft className="h-5 w-5" strokeWidth={1.5} />
               </button>
-              <h2 className="text-center text-lg font-black tracking-[0.18em] text-[#00FF88]">
-                NOTIFICATIONS
+              <h2 className="text-[16px] font-bold tracking-[-0.02em] text-white">
+                Notifications
               </h2>
-              <div className="w-16" />
+              <div className="w-10" />
             </div>
 
-            <div className="mt-4 flex items-center gap-5 border-b border-[#2A2A2A] pb-2">
+            <div className="mt-4 flex gap-6 border-b border-[#1E1E1E]">
               {(["all", "nudges", "challenges"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setNotificationTab(t)}
-                  className={`relative text-xs font-black tracking-[0.18em] ${
-                    notificationTab === t ? "text-[#00FF88]" : "text-[#888888]"
+                  className={`relative pb-3 pt-1 text-[13px] font-medium capitalize transition-colors ${
+                    notificationTab === t ? "text-white" : "text-[#6B6B6B]"
                   }`}
                 >
-                  {t.toUpperCase()}
+                  {t}
                   {notificationTab === t && (
-                    <span className="absolute -bottom-[10px] left-0 h-[3px] w-full rounded-full bg-[#00FF88]" />
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00FF88]" />
                   )}
                 </button>
               ))}
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-0">
               {visibleNotifications.length === 0 && (
-                <div className="rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4 text-sm font-semibold text-[#888888]">
-                  Your discipline is unchallenged. No notifications.
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-[15px] font-medium text-white">All caught up! 🎉</p>
+                  <p className="mt-1 text-[12px] text-[#6B6B6B]">No new notifications</p>
                 </div>
               )}
               {visibleNotifications.map((n) => (
                 <div
                   key={n.id}
-                  className="rounded-2xl border border-[#2A2A2A] bg-[#121212] p-3 [background-image:radial-gradient(circle_at_100%_0%,rgba(0,255,136,0.09),transparent_45%)]"
+                  className="flex items-start gap-3 border-b border-[#1E1E1E] py-4 last:border-b-0"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      {n.type === "nudge" ? (
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#00FF88]/40 bg-[#0E1A14]">
-                          <Image src={props.nudgeAssetSrc} alt="" width={20} height={20} className="h-5 w-5 object-contain" />
-                        </span>
-                      ) : n.sender?.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={n.sender.avatarUrl}
-                          alt={n.sender.username}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#1A1A1A] text-[#00FF88]">
-                          🔥
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-extrabold text-white">
-                          {notificationCopy(n)}
-                        </p>
-                        <p className="mt-1 text-[11px] text-[#888888]">
-                          {n.type.toUpperCase()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {n.type === "nudge" ? (
-                      <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110">
-                        POST PROOF
-                      </button>
-                    ) : n.type === "friend_request" ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleFriendRequestAction(n.requestId, "accept")}
-                          className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110"
-                        >
-                          ACCEPT
-                        </button>
-                        <button
-                          onClick={() => handleFriendRequestAction(n.requestId, "reject")}
-                          className="rounded-xl border border-[#FF4B4B]/50 px-3 py-2 text-xs font-bold text-[#FF4B4B] transition-all duration-200 ease-in-out hover:bg-[#FF4B4B]/10"
-                        >
-                          REJECT
-                        </button>
-                      </div>
-                    ) : n.type.includes("challenge") ? (
-                      <div className="flex items-center gap-2">
-                        <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-bold text-black transition-all duration-200 ease-in-out hover:brightness-110">
-                          JOIN
-                        </button>
-                        <button className="rounded-xl border border-[#FF4B4B]/50 px-3 py-2 text-xs font-bold text-[#FF4B4B] transition-all duration-200 ease-in-out hover:bg-[#FF4B4B]/10">
-                          REJECT
-                        </button>
-                      </div>
-                    ) : null}
+                  <Avatar
+                    url={n.sender?.avatarUrl ?? null}
+                    username={n.sender?.username ?? "?"}
+                    size={28}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] text-white">{notificationCopy(n)}</p>
+                    <p className="mt-0.5 text-[12px] text-[#3A3A3A]">{timeAgo(n.createdAt)}</p>
                   </div>
+                  {n.type === "nudge" && (
+                    <Link
+                      href="/record"
+                      className="shrink-0 text-[13px] font-medium text-[#00FF88] transition-colors hover:underline"
+                    >
+                      Record →
+                    </Link>
+                  )}
+                  {n.type === "friend_request" && (
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() => handleFriendRequestAction(n.requestId, "accept")}
+                        className="rounded-xl bg-[#00FF88] px-3 py-2 text-[13px] font-semibold text-black transition-all duration-150 active:scale-[0.97]"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleFriendRequestAction(n.requestId, "reject")}
+                        className="rounded-xl border border-[#1E1E1E] px-3 py-2 text-[13px] font-medium text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A]"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                  {n.type.includes("challenge") && (
+                    <div className="flex shrink-0 gap-2">
+                      <button className="rounded-xl bg-[#00FF88] px-3 py-2 text-[13px] font-semibold text-black transition-all duration-150 active:scale-[0.97]">
+                        Join
+                      </button>
+                      <button className="rounded-xl border border-[#1E1E1E] px-3 py-2 text-[13px] font-medium text-[#6B6B6B]">
+                        Reject
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -807,173 +743,103 @@ export function DashboardClient(props: {
         {/* Doom Clock + Slack Watch */}
         <section className="mt-4 space-y-2">
           {nudgeBanner && (
-            <div className="max-w-md mx-auto rounded-2xl border border-[#00FF88]/40 bg-[#0E1A14] px-3 py-2 text-xs font-semibold text-[#B8FFD9]">
+            <div className="mx-auto max-w-md rounded-2xl border border-[#1E1E1E] bg-[#111111] px-4 py-3 text-[15px] text-[#00FF88]">
               {nudgeBanner}
             </div>
           )}
 
-          <div
-            className={`max-w-md mx-auto rounded-2xl border p-3 backdrop-blur-md ${
-              secured
-                ? "border-[#00FF88]/30 bg-white/5"
-                : "border-[#FF4B4B]/30 bg-white/5"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#FF4B4B]">
-                Post vlog!
-              </p>
-              <span className="rounded-full border border-[#2A2A2A] px-2 py-0.5 text-[10px] text-[#888888]">
-                until 00:00
-              </span>
-            </div>
-            <div className="mt-2 font-mono text-[28px] font-bold tracking-[0.06em] text-white">
-              {String(hh).padStart(2, "0")}:{String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
-            </div>
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#1A1A1A]">
-              <motion.div
-                className={`h-full ${secured ? "bg-[#00FF88]" : "bg-[#FF4B4B]"}`}
-                animate={{ width: `${Math.max(0, Math.min(100, dayProgress * 100))}%` }}
-                transition={{ duration: 0.25, ease: "easeInOut" }}
-              />
-            </div>
-          </div>
-
-          {/* Add Friend (neon card) */}
-          <div className="mx-auto max-w-md rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
-                Add friend
-              </h2>
-              <span className="text-[11px] text-[#888888]">
-                Username (case-insensitive)
-              </span>
-            </div>
-
-            <form
-              className="flex items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                sendFriendRequest().catch(() => {});
-              }}
-            >
-              <input
-                value={friendSearch}
-                onChange={(e) => setFriendSearch(e.target.value)}
-                placeholder="e.g. ali_works"
-                className="flex-1 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-[11px] text-white outline-none focus:border-[#00FF88]"
-                autoCapitalize="none"
-                autoCorrect="off"
-              />
-              <button
-                type="submit"
-                disabled={friendSending}
-                className="rounded-xl bg-[#00FF88] px-4 py-2 text-xs font-semibold text-black shadow-[0_0_22px_rgba(0,255,136,0.35)] transition active:scale-[0.99] disabled:opacity-60"
-              >
-                {friendSending ? "Adding…" : "Add"}
-              </button>
-            </form>
-
-            {friendFeedback && (
-              <div
-                className={`mt-2 text-[11px] font-semibold ${
-                  friendFeedback.kind === "success"
-                    ? "text-[#00FF88]"
-                    : "text-[#FF3B3B]"
-                }`}
-              >
-                {friendFeedback.text}
+          <div className="mx-auto max-w-md rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-colors hover:bg-[#1A1A1A]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[15px] font-normal text-white">
+                  Post today&apos;s vlog
+                </p>
+                <p className="mt-1 font-mono text-[20px] font-semibold tracking-tight text-white tabular-nums">
+                  {String(hh).padStart(2, "0")}:{String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
+                </p>
               </div>
-            )}
+              <div className="relative h-14 w-14 shrink-0">
+                <svg className="h-14 w-14 -rotate-90" viewBox="0 0 36 36">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.9"
+                    fill="none"
+                    stroke="#1E1E1E"
+                    strokeWidth="2"
+                  />
+                  <motion.circle
+                    cx="18"
+                    cy="18"
+                    r="15.9"
+                    fill="none"
+                    stroke="#00FF88"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(1 - dayProgress) * 100} ${dayProgress * 100}`}
+                    initial={false}
+                    animate={{ strokeDasharray: `${(1 - dayProgress) * 100} ${dayProgress * 100}` }}
+                    transition={{ duration: 0.25 }}
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-black uppercase tracking-[0.22em] text-[#FF6B35]">
-              LOSER RADAR
-            </h2>
-          </div>
-
-          <div className="rounded-2xl border border-[#2A2A2A] bg-[#121212] p-3">
-            <div className="flex gap-3 overflow-x-auto pb-1">
+          <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
+            Needs a push
+          </h2>
+          <div className="rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-colors hover:bg-[#1A1A1A]">
             {props.friends.filter((f) => !f.postedToday).length === 0 ? (
-              <div className="min-w-[240px] rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
-                Everyone is disciplined today.
-              </div>
+              <p className="text-[15px] text-[#6B6B6B]">
+                Everyone has posted today.
+              </p>
             ) : (
-              props.friends
-                .filter((f) => !f.postedToday)
-                .map((f) => (
-                <div
-                  key={f.userId}
-                  className="w-16 shrink-0"
-                  aria-label={`${f.username} missed`}
-                >
-                  <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col gap-3">
+                {props.friends
+                  .filter((f) => !f.postedToday)
+                  .map((f) => (
                     <div
-                      className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border p-0.5 transition ${
-                        nudgedById[f.userId]
-                          ? "border-[#00FF88] bg-[#00FF88]/10"
-                          : "border-[#2A2A2A] bg-[#1A1A1A]"
-                      }`}
+                      key={f.userId}
+                      className="flex items-center justify-between gap-3"
                     >
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-[#0A0A0A]">
-                        {f.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={f.avatarUrl}
-                            alt={f.username}
-                            width={44}
-                            height={44}
-                            className={`h-full w-full rounded-full object-cover transition ${
-                              nudgedById[f.userId]
-                                ? "grayscale-0 opacity-100"
-                                : "grayscale opacity-60"
-                            }`}
-                          />
-                        ) : (
-                          <div
-                            className={`flex h-full w-full items-center justify-center ${
-                              nudgedById[f.userId]
-                                ? "text-[#00FF88]"
-                                : "text-[#888888]"
-                            }`}
-                          >
-                            <IconUser className="h-4 w-4" />
-                          </div>
-                        )}
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <Avatar url={f.avatarUrl} username={f.username} size={28} />
+                        <div className="min-w-0">
+                          <p className="truncate text-[15px] font-medium text-white">
+                            @{f.username}
+                          </p>
+                          <span className="inline-block rounded-full bg-[#FF8C00]/20 px-2 py-0.5 text-[11px] font-medium text-[#FF8C00]">
+                            Hasn&apos;t posted
+                          </span>
+                        </div>
                       </div>
+                      <NudgeButton
+                        nudged={!!nudgedById[f.userId]}
+                        onClick={() => nudgeFriend(f)}
+                        username={f.username}
+                      />
                     </div>
-                    <p className="max-w-[62px] truncate text-[10px] text-[#888888]">
-                      @{f.username}
-                    </p>
-                    <NudgeButton
-                      nudged={!!nudgedById[f.userId]}
-                      onClick={() => nudgeFriend(f)}
-                      username={f.username}
-                      assetSrc={props.nudgeAssetSrc}
-                    />
-                  </div>
-                </div>
-                ))
+                  ))}
+              </div>
             )}
-          </div>
           </div>
         </section>
 
         {installBanner && (
-          <div className="mt-4 rounded-3xl border border-[#2A2A2A] bg-[#1A1A1A] p-4">
+          <div className="mt-4 rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold">
-                  📱 Install Daree for the best experience
+                <p className="text-[15px] font-medium text-white">
+                  Install Daree for the best experience
                 </p>
-                <p className="mt-1 text-xs text-[#888888]">
+                <p className="mt-1 text-[13px] text-[#6B6B6B]">
                   Add it to your Home Screen. It opens like a real app.
                 </p>
               </div>
               <button
                 onClick={() => setInstallBanner(false)}
-                className="rounded-xl border border-[#2A2A2A] bg-black/30 px-3 py-1 text-xs text-[#888888]"
+                className="shrink-0 rounded-xl border border-[#1E1E1E] bg-transparent px-3 py-1.5 text-[13px] text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A]"
               >
                 Maybe later
               </button>
@@ -987,108 +853,84 @@ export function DashboardClient(props: {
                 installEventRef.current = null;
                 setInstallBanner(false);
               }}
-              className="mt-3 w-full rounded-2xl bg-[#00FF88] px-4 py-3 text-sm font-semibold text-black"
+              className="mt-3 flex h-12 w-full items-center justify-center rounded-xl bg-[#00FF88] px-4 text-[15px] font-semibold text-black transition-all duration-150 active:scale-[0.97]"
             >
               Add to Home Screen
             </button>
           </div>
         )}
 
-        <section className="mt-6">
+        <section className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
               Active dares
             </h2>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setJoinOpen(true)}
-                className="rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-xs font-semibold text-white"
-              >
-                Join
-              </button>
-            </div>
+            <button
+              onClick={() => setJoinOpen(true)}
+              className="rounded-xl border border-[#2A2A2A] bg-transparent px-4 py-2 text-[13px] font-medium text-white transition-colors duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
+            >
+              Join
+            </button>
           </div>
 
           {!hasChallenges ? (
-            <div className="mt-3 overflow-hidden rounded-3xl border border-[#2A2A2A] bg-[#1A1A1A] p-5">
-              <div className="relative">
-                <div className="absolute -right-10 -top-8 h-32 w-32 rounded-full bg-[#00FF88]/10 blur-2xl" />
-                <div className="absolute -bottom-12 left-0 h-40 w-40 rounded-full bg-[#FF6B35]/10 blur-2xl" />
-                <div className="relative">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[#2A2A2A] bg-black/40 px-3 py-1 text-xs text-[#888888]">
-                    <span className="h-2 w-2 rounded-full bg-[#00FF88]" />
-                    No dares yet
-                  </div>
-                  <p className="mt-3 text-lg font-black tracking-tight">
-                    No dares yet. Time to challenge someone.
-                  </p>
-                  <p className="mt-2 text-sm text-[#888888]">
-                    Create a dare, invite your friends, and start posting daily
-                    proof.
-                  </p>
-
-                  <Link
-                    href="/create"
-                    className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#00FF88] px-4 py-4 text-sm font-semibold text-black transition active:scale-[0.99]"
-                    style={{
-                      animation: "pulseSoft 1.8s ease-in-out infinite"
-                    }}
-                  >
-                    Create a Dare 🔥
-                  </Link>
-                </div>
+            <div className="mt-3 overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-6">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[#00FF88]" />
+                <span className="text-[12px] font-medium text-[#6B6B6B]">No dares yet</span>
               </div>
+              <p className="mt-3 text-[16px] font-bold tracking-[-0.02em] text-white">
+                No dares yet. Time to challenge someone.
+              </p>
+              <p className="mt-2 text-[15px] text-[#6B6B6B]">
+                Create a dare, invite your friends, and start posting daily proof.
+              </p>
+              <Link
+                href="/create"
+                className="mt-5 flex w-full items-center justify-center rounded-xl bg-[#00FF88] px-4 py-3 text-[15px] font-semibold text-black transition-all duration-150 active:scale-[0.97]"
+              >
+                Create a dare
+              </Link>
             </div>
           ) : (
             <div className="mt-3 grid gap-3">
-              {challenges.map((c) => {
+              {challenges.map((c, i) => {
                 const { dayNumber, daysRemaining, progress } = getProgress(c);
                 return (
                   <Link
                     key={c.id}
                     href={`/challenge/${c.id}`}
-                    className="group relative overflow-hidden rounded-3xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 transition active:scale-[0.99]"
+                    className="block overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
                   >
-                    <div className="absolute left-0 top-0 h-full w-1 bg-[#00FF88]" />
-
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-lg font-black tracking-tight">
-                          {c.title}
-                        </p>
-                        <p className="mt-1 text-xs text-[#888888]">
-                          Day {dayNumber} of {c.duration_days || "—"}
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-[#2A2A2A] bg-black/30 px-3 py-1 text-[11px] font-semibold text-[#888888]">
-                        Live
+                      <h3 className="text-[16px] font-bold tracking-[-0.02em] text-white">
+                        {c.title}
+                      </h3>
+                      <span className="inline-flex shrink-0 items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#00FF88]" />
+                        <span className="text-[12px] font-medium text-[#00FF88]">Live</span>
                       </span>
                     </div>
 
-                    <div className="mt-3 h-2 w-full rounded-full bg-black/30">
-                      <div
-                        className="h-2 rounded-full bg-gradient-to-r from-[#00FF88] to-[#FF6B35]"
-                        style={{ width: `${Math.round(progress * 100)}%` }}
+                    <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#1E1E1E]">
+                      <motion.div
+                        className="h-full rounded-full bg-[#00FF88]"
+                        initial={false}
+                        animate={{ width: `${Math.round(progress * 100)}%` }}
+                        transition={{ duration: 0.25 }}
                       />
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-[#888888]">
-                      <span>
-                        👥{" "}
-                        <span className="text-white">
-                          {c.member_count ?? "—"}
-                        </span>
+                    <div className="mt-3 flex items-center gap-4 text-[12px] text-[#6B6B6B]">
+                      <span className="flex items-center gap-1">
+                        <IconUser className="h-3.5 w-3.5" />
+                        <span className="tabular-nums text-white">{c.member_count ?? "—"}</span>
                       </span>
-                      <span>
-                        🔥{" "}
-                        <span className="text-white">{c.your_streak}</span>
+                      <span className="flex items-center gap-1">
+                        <IconZap className="h-3.5 w-3.5" />
+                        <span className="tabular-nums text-white">{c.your_streak}</span>
                       </span>
-                      <span>
-                        📅{" "}
-                        <span className="text-white">{daysRemaining}</span>{" "}
-                        left
-                      </span>
+                      <span className="tabular-nums text-white">{daysRemaining} days left</span>
                     </div>
                   </Link>
                 );
@@ -1097,76 +939,47 @@ export function DashboardClient(props: {
           )}
         </section>
 
-        {/* Global Top 5 (Arena) */}
+        {/* Global Top 5 */}
         <section className="mt-10">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
-            Global Top 5
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
+            Global top 5
           </h2>
 
           {props.globalTop5.length === 0 ? (
-            <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
+            <div className="mt-3 rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 text-[15px] text-[#6B6B6B]">
               No leaderboard data yet.
             </div>
           ) : (
-            <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A]">
-              <div className="px-4 py-3 text-[11px] text-[#888888]">
-                Rank <span className="ml-2">|</span> Avatar <span className="ml-2">|</span>{" "}
-                Username <span className="ml-2">|</span> Streak
-              </div>
-              <div className="divide-y divide-[#2A2A2A]">
-                {props.globalTop5.map((u, idx) => (
+            <div className="mt-3 overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111]">
+              {props.globalTop5.map((u, idx) => {
+                const isCurrentUser = u.userId === props.profile.id;
+                const rankColor =
+                  idx === 0 ? "#FFD700" : idx === 1 ? "#C0C0C0" : idx === 2 ? "#CD7F32" : undefined;
+                return (
                   <div
                     key={u.userId}
-                    className={`flex items-center gap-3 px-4 py-3 ${
-                      idx === 0
-                        ? "bg-[#00FF88]/10"
-                        : idx === 1
-                        ? "bg-[#FF6B35]/10"
-                        : idx === 2
-                        ? "bg-[#00FF88]/5"
-                        : "bg-[#1A1A1A]"
+                    className={`flex items-center gap-3 border-b border-[#1E1E1E] px-4 py-3 last:border-b-0 ${
+                      isCurrentUser ? "bg-[#00FF88]/10" : ""
                     }`}
                   >
-                    <div
-                      className={`w-8 text-sm font-black ${
-                        idx === 0
-                          ? "text-[#00FF88]"
-                          : idx === 1
-                          ? "text-[#FF6B35]"
-                          : idx === 2
-                          ? "text-[#00FF88]"
-                          : "text-[#888888]"
-                      }`}
+                    <span
+                      className="w-6 shrink-0 text-[14px] font-bold tabular-nums"
+                      style={rankColor ? { color: rankColor } : { color: "#6B6B6B" }}
                     >
-                      #{idx + 1}
-                    </div>
-
-                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
-                      {u.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={u.avatarUrl}
-                          alt={u.username}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-xs font-bold text-[#888888]">
-                          {u.username?.[0]?.toUpperCase() ?? "?"}
-                        </span>
-                      )}
-                    </div>
-
+                      {idx + 1}
+                    </span>
+                    <Avatar url={u.avatarUrl} username={u.username} size={28} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-white">
+                      <p className="truncate text-[15px] font-medium text-white">
                         {u.displayName || u.username}
-                      </div>
-                      <div className="text-[11px] text-[#888888]">
-                        🔥 {u.longestStreak} Days
-                      </div>
+                      </p>
+                      <p className="text-[12px] text-[#6B6B6B] tabular-nums">
+                        {u.longestStreak} day streak
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -1175,7 +988,7 @@ export function DashboardClient(props: {
       {/* FAB */}
       <Link
         href="/create"
-        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#00FF88] text-black shadow-[0_0_30px_rgba(0,255,136,0.45)] transition active:scale-[0.98]"
+        className="fixed bottom-[88px] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#00FF88] text-black shadow-[0_4px_24px_rgba(0,255,136,0.3)] transition-all duration-150 active:scale-[0.97]"
         aria-label="Create a Dare"
       >
         <IconPlus className="h-6 w-6" />
@@ -1183,63 +996,52 @@ export function DashboardClient(props: {
       </div>
 
       {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#2A2A2A] bg-black/80 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-3 items-center px-6 py-3">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#1E1E1E] bg-[#0A0A0A]/90 backdrop-blur-[20px]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
+      >
+        <div
+          className="mx-auto grid max-w-md grid-cols-3 items-center justify-items-center"
+          style={{ height: 68 }}
+        >
           <Link
             href="/dashboard"
-            className="flex flex-col items-center gap-1 text-[#00FF88]"
+            className="flex flex-col items-center gap-1 py-2"
             aria-label="Home"
           >
-            <IconHome className="h-6 w-6" />
+            <IconHome
+              className={`h-5 w-5 ${pathname === "/dashboard" ? "text-white" : "text-[#6B6B6B]"}`}
+            />
+            {pathname === "/dashboard" && (
+              <span className="h-1 w-1 rounded-full bg-[#00FF88]" />
+            )}
           </Link>
 
           <Link
             href="/record"
-            className="mx-auto -mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[#00FF88] text-black"
+            className="-mt-6 flex h-12 w-12 items-center justify-center rounded-full bg-[#00FF88] text-black"
             aria-label="Record"
           >
-            <IconCamera className="h-7 w-7" />
+            <IconCamera className="h-6 w-6" />
           </Link>
 
           <Link
             href="/profile"
-            className={`flex flex-col items-center gap-1 ${
-              onProfile ? "text-[#00FF88]" : "text-[#888888]"
-            }`}
+            className="flex flex-col items-center gap-1 py-2"
             aria-label="Profile"
           >
-            {props.profile.avatarUrl ? (
-              <span className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#1A1A1A]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={props.profile.avatarUrl}
-                  alt="Profile avatar"
-                  className="h-full w-full object-cover"
-                />
-              </span>
+            {onProfile ? (
+              <>
+                <Avatar url={props.profile.avatarUrl} username={props.profile.username} size={20} />
+                <span className="h-1 w-1 rounded-full bg-[#00FF88]" />
+              </>
             ) : (
-              <IconUser className="h-6 w-6" />
+              <IconUser className="h-5 w-5 text-[#6B6B6B]" />
             )}
           </Link>
         </div>
       </nav>
 
-      <style jsx global>{`
-        @keyframes pulseSoft {
-          0% {
-            transform: translateZ(0) scale(1);
-            box-shadow: 0 0 0 rgba(0, 255, 136, 0);
-          }
-          50% {
-            transform: translateZ(0) scale(1.01);
-            box-shadow: 0 0 35px rgba(0, 255, 136, 0.28);
-          }
-          100% {
-            transform: translateZ(0) scale(1);
-            box-shadow: 0 0 0 rgba(0, 255, 136, 0);
-          }
-        }
-      `}</style>
 
       <JoinSheet
         open={joinOpen}

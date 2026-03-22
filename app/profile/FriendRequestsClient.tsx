@@ -14,16 +14,37 @@ type RequestRow = {
   };
 };
 
+const INITIAL_COLORS = ["#2D5A3D", "#5A2D4D", "#2D3D5A", "#5A4D2D", "#3D2D5A", "#2D5A5A"] as const;
+
+function avatarColor(username: string): string {
+  let hash = 0;
+  const s = username || "u";
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash << 5) - hash + s.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return INITIAL_COLORS[Math.abs(hash) % INITIAL_COLORS.length];
+}
+
 function AvatarThumb(props: { url: string | null; name: string }) {
+  const [broken, setBroken] = useState(false);
+  const showImg = props.url && !broken;
+  const initial = (props.name || "U").trim().charAt(0).toUpperCase();
   return (
-    <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#121212]">
-      {props.url ? (
+    <span
+      className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full"
+      style={!showImg ? { backgroundColor: avatarColor(props.name) } : undefined}
+    >
+      {showImg ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={props.url} alt={props.name} className="h-full w-full object-cover" />
+        <img
+          src={props.url!}
+          alt={props.name}
+          className="h-full w-full object-cover"
+          onError={() => setBroken(true)}
+        />
       ) : (
-        <span className="text-sm font-bold text-[#00FF88]">
-          {props.name.trim()[0]?.toUpperCase() ?? "?"}
-        </span>
+        <span className="text-sm font-semibold text-white">{initial}</span>
       )}
     </span>
   );
@@ -187,7 +208,7 @@ export default function FriendRequestsClient({
 
   if (!requests || requests.length === 0) {
     return (
-      <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] px-4 py-4 text-sm text-[#888888]">
+      <div className="mt-3 rounded-xl border border-[#1E1E1E] bg-[#111111] px-4 py-4 text-[15px] text-[#6B6B6B]">
         No pending requests.
       </div>
     );
@@ -198,7 +219,7 @@ export default function FriendRequestsClient({
       {requests.map((r) => (
         <div
           key={r.id}
-          className="flex items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] px-3 py-3"
+          className="flex items-center justify-between gap-3 rounded-xl border border-[#1E1E1E] bg-[#111111] px-4 py-3"
         >
           <div className="flex items-center gap-3">
             <AvatarThumb url={r.fromUser.avatarUrl} name={r.fromUser.username} />
@@ -216,14 +237,14 @@ export default function FriendRequestsClient({
             <button
               onClick={() => respond(r.id, "accept")}
               disabled={loadingId === r.id}
-              className="rounded-xl bg-[#00FF88] px-3 py-2 text-xs font-semibold text-black disabled:opacity-60"
+              className="rounded-xl bg-[#00FF88] px-4 py-2 text-[13px] font-semibold text-black transition-all duration-150 active:scale-[0.97] disabled:opacity-60"
             >
               Accept
             </button>
             <button
               onClick={() => respond(r.id, "reject")}
               disabled={loadingId === r.id}
-              className="rounded-xl border border-[#FF3B3B]/40 bg-transparent px-3 py-2 text-xs font-semibold text-[#FF3B3B] disabled:opacity-60"
+              className="rounded-xl border border-[#1E1E1E] bg-transparent px-4 py-2 text-[13px] font-medium text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A] disabled:opacity-60"
             >
               Reject
             </button>

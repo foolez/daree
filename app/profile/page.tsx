@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProfileAvatarClient } from "./ProfileAvatarClient";
 import FriendRequestsClient from "./FriendRequestsClient";
+import AddFriendClient from "./AddFriendClient";
 
 export const dynamic = "force-dynamic";
 
@@ -231,10 +232,10 @@ export default async function ProfilePage() {
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-24 pt-6">
-        <header className="mb-6 flex items-start justify-between">
+        <header className="mb-8 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="inline-flex items-center rounded-full border border-[#2A2A2A] bg-black/50 px-2 py-1 text-[11px] font-semibold text-[#00FF88]">
+            <div className="flex flex-col gap-2">
+              <span className="inline-flex w-fit items-center rounded-full border border-[#1E1E1E] bg-[#111111] px-2 py-1 text-[11px] font-semibold text-[#00FF88]">
                 {rank.label}
               </span>
               <ProfileAvatarClient
@@ -244,11 +245,11 @@ export default async function ProfilePage() {
               />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight">
+              <h1 className="text-xl font-bold tracking-[-0.02em] text-white">
                 {profile.display_name || profile.username}
               </h1>
-              <p className="text-xs text-[#888888]">@{profile.username}</p>
-              <p className="mt-1 text-[11px] text-[#888888]">
+              <p className="text-[12px] text-[#6B6B6B]">@{profile.username}</p>
+              <p className="mt-1 text-[12px] text-[#6B6B6B]">
                 You are {rank.remaining} vlog
                 {rank.remaining === 1 ? "" : "s"} away from{" "}
                 <span className="text-[#00FF88]">Warrior</span> rank.
@@ -258,48 +259,60 @@ export default async function ProfilePage() {
 
           <Link
             href="/dashboard"
-            className="rounded-full border border-[#2A2A2A] bg-black/40 px-2 py-1 text-xs text-[#888888] hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A] hover:text-white"
             aria-label="Back to dashboard"
           >
-            ✕
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </Link>
         </header>
 
         {/* Stats grid */}
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
             Your stats
           </h2>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3">
-              <p className="text-[11px] text-[#888888]">Total dares</p>
-              <p className="mt-1 text-lg font-black text-[#00FF88]">
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-colors hover:bg-[#1A1A1A]">
+              <p className="text-[12px] text-[#6B6B6B]">Total dares</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-[#00FF88]">
                 {totalDares}
               </p>
             </div>
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3">
-              <p className="text-[11px] text-[#888888]">Current streak</p>
-              <p className="mt-1 text-lg font-black text-[#00FF88]">
-                🔥 {currentStreak}
+            <div className="rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-colors hover:bg-[#1A1A1A]">
+              <p className="text-[12px] text-[#6B6B6B]">Current streak</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-[#00FF88]">
+                {currentStreak}
               </p>
             </div>
-            <div className="rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-3">
-              <p className="text-[11px] text-[#888888]">Total vlogs</p>
-              <p className="mt-1 text-lg font-black text-[#00FF88]">
+            <div className="rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-colors hover:bg-[#1A1A1A]">
+              <p className="text-[12px] text-[#6B6B6B]">Total vlogs</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-[#00FF88]">
                 {totalVlogs}
               </p>
             </div>
           </div>
         </section>
 
+        {/* Add Friend */}
+        <section className="mt-8">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
+            Add friend
+          </h2>
+          <div className="mt-3">
+            <AddFriendClient />
+          </div>
+        </section>
+
         {/* Friend Requests */}
         <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
-            Friend Requests
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
+            Friend requests
           </h2>
 
-          <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4">
-            <h3 className="text-[12px] font-semibold text-white">
+          <div className="mt-3 rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4">
+            <h3 className="text-[13px] font-semibold text-white">
               Received
             </h3>
             <FriendRequestsClient
@@ -308,8 +321,8 @@ export default async function ProfilePage() {
             />
           </div>
 
-          <div className="mt-4 rounded-2xl border border-[#2A2A2A] bg-[#121212] p-4">
-            <h3 className="text-[12px] font-semibold text-white">Sent</h3>
+          <div className="mt-4 rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4">
+            <h3 className="text-[13px] font-semibold text-white">Sent</h3>
 
             {sentRequests.length === 0 ? (
               <div className="mt-3 text-sm text-[#888888]">
@@ -320,10 +333,10 @@ export default async function ProfilePage() {
                 {sentRequests.map((r) => (
                   <div
                     key={r.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#121212] px-3 py-3"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[#1E1E1E] bg-[#111111] px-4 py-3"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#121212]">
+                      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#1E1E1E] bg-[#0A0A0A]">
                         {r.toUser.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -346,7 +359,7 @@ export default async function ProfilePage() {
                         </div>
                       </div>
                     </div>
-                    <span className="rounded-full border border-[#00FF88]/30 bg-[#00FF88]/10 px-3 py-1 text-[11px] font-semibold text-[#00FF88]">
+                    <span className="rounded-full bg-[#00FF88]/20 px-3 py-1 text-[11px] font-semibold text-[#00FF88]">
                       Pending
                     </span>
                   </div>
@@ -358,10 +371,10 @@ export default async function ProfilePage() {
 
         {/* Weekly consistency */}
         <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
             Weekly consistency
           </h2>
-          <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#2A2A2A] bg-[#050816] px-4 py-3">
+          <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#1E1E1E] bg-[#111111] px-4 py-3">
             <div className="flex flex-1 items-center gap-2">
               {last7Days.map((d) => (
                 <div
@@ -379,27 +392,27 @@ export default async function ProfilePage() {
                 </div>
               ))}
             </div>
-            <div className="ml-3 text-right text-[11px] text-[#9CA3AF]">
+            <div className="ml-3 text-right text-[12px] text-[#6B6B6B]">
               Keep the row green to grow your streak.
             </div>
           </div>
         </section>
 
         {/* Personal best */}
-        <section className="mt-6">
-          <div className="flex items-center justify-between rounded-2xl border border-[#2A2A2A] bg-[#020617] px-4 py-3">
+        <section className="mt-8">
+          <div className="flex items-center justify-between rounded-2xl border border-[#1E1E1E] bg-[#111111] px-4 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6B7280]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
                 Personal best
               </p>
-              <p className="mt-1 text-sm text-[#D1D5DB]">
-                Longest Streak:{" "}
-                <span className="font-semibold text-[#00FF88]">
-                  🔥 {longestStreak} days
+              <p className="mt-1 text-[15px] text-white">
+                Longest streak:{" "}
+                <span className="font-semibold text-[#00FF88] tabular-nums">
+                  {longestStreak} days
                 </span>
               </p>
             </div>
-            <button className="rounded-2xl border border-[#2A2A2A] bg-transparent px-3 py-2 text-xs text-[#E5E7EB] hover:border-[#00FF88]/60 hover:text-[#00FF88]">
+            <button className="rounded-xl border border-[#2A2A2A] bg-transparent px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#1A1A1A]">
               Share profile
             </button>
           </div>
@@ -407,11 +420,11 @@ export default async function ProfilePage() {
 
         {/* Active challenges */}
         <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#888888]">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6B6B6B]">
             Active dares
           </h2>
           {activeChallenges.length === 0 ? (
-            <div className="mt-3 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-sm text-[#888888]">
+            <div className="mt-3 rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 text-[15px] text-[#6B6B6B]">
               You&apos;re not in any dares yet. Create one from the dashboard and
               start your streak.
             </div>
@@ -421,7 +434,7 @@ export default async function ProfilePage() {
                 <Link
                   key={c.id}
                   href={`/challenge/${c.id}`}
-                  className="rounded-2xl border border-[#2A2A2A] bg-[#020617] p-4 text-sm transition hover:border-[#00FF88]/40 active:scale-[0.99]"
+                  className="rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-colors hover:bg-[#1A1A1A] active:scale-[0.97]"
                 >
                   <p className="text-sm font-semibold text-white">
                     {c.title}
@@ -436,11 +449,11 @@ export default async function ProfilePage() {
         </section>
 
         {/* Logout at bottom */}
-        <section className="mt-8 border-t border-[#111827] pt-4">
+        <section className="mt-8 border-t border-[#1E1E1E] pt-6">
           <form action={handleLogout}>
             <button
               type="submit"
-              className="w-full rounded-2xl border border-[#4B5563] bg-transparent px-4 py-3 text-sm font-semibold text-[#FF3B3B] transition hover:border-[#FF3B3B] hover:bg-[#111827]"
+              className="flex h-12 w-full items-center justify-center rounded-xl border border-[#1E1E1E] bg-transparent text-[15px] font-semibold text-[#FF4444] transition-colors hover:bg-[#1A1A1A] active:scale-[0.97]"
             >
               Log out
             </button>
