@@ -919,7 +919,7 @@ export function DashboardClient(props: {
                   <Link
                     key={c.id}
                     href={`/challenge/${c.id}`}
-                    className="block overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
+                    className="block cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -1018,10 +1018,11 @@ export function DashboardClient(props: {
         </section>
       </div>
 
-      {/* FAB */}
+      {/* FAB - above nav bar */}
       <Link
         href="/create"
-        className="fixed bottom-[88px] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#00FF88] text-black shadow-[0_4px_24px_rgba(0,255,136,0.3)] transition-all duration-150 active:scale-[0.97]"
+        className="fixed right-[20px] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#00FF88] text-black shadow-[0_4px_24px_rgba(0,255,136,0.3)] transition-all duration-150 active:scale-[0.97]"
+        style={{ bottom: 88 }}
         aria-label="Create a Dare"
       >
         <IconPlus className="h-6 w-6" />

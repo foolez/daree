@@ -48,21 +48,19 @@ export function BottomNav(props: { profile: { avatarUrl: string | null; username
           <svg
             viewBox="0 0 24 24"
             fill="none"
-            stroke={onExplore ? "white" : "#6B6B6B"}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
             className="h-6 w-6"
+            style={{ color: onExplore ? "white" : "#6B6B6B" }}
           >
-            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M14.828 9.172l-1.414 5.656-5.656 1.414 1.414-5.656z" />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+            <polygon points="14.5,9.5 10,14 9.5,14.5 14,10" fill="currentColor" />
           </svg>
           {onExplore && <span className="h-1 w-1 rounded-full bg-[#00FF88]" />}
         </Link>
 
-        {/* Record - center, raised green circle */}
+        {/* Record - center, raised green circle (-12px above nav) */}
         <Link
           href="/record"
-          className="-mt-6 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#00FF88]"
+          className="-mt-3 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#00FF88]"
           aria-label="Record"
         >
           <svg
@@ -74,7 +72,13 @@ export function BottomNav(props: { profile: { avatarUrl: string | null; username
             strokeLinejoin="round"
             className="h-6 w-6"
           >
-            <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+            <circle cx="12" cy="12" r="3" stroke="black" strokeWidth="1.5" fill="none" />
+            <path
+              d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z"
+              stroke="black"
+              strokeWidth="1.5"
+              fill="none"
+            />
           </svg>
         </Link>
 

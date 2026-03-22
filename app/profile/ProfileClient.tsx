@@ -466,7 +466,7 @@ export function ProfileClient(props: {
                   <Link
                     key={c.id}
                     href={`/challenge/${c.id}`}
-                    className="block overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
+                    className="block cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="text-[16px] font-bold tracking-[-0.02em] text-white">
