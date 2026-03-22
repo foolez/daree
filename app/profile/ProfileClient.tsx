@@ -343,15 +343,15 @@ export function ProfileClient(props: {
 
         {/* Header - centered */}
         <header className="relative flex flex-col items-center pb-6">
-          <button
-            className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-xl text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A] hover:text-white"
-            aria-label="Settings"
+          <Link
+            href="/dashboard"
+            className="absolute right-0 top-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-[#6B6B6B]"
+            aria-label="Close"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-5 w-5">
-              <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </button>
+          </Link>
           <button
             className="absolute left-0 top-0 rounded-xl border border-[#2A2A2A] bg-transparent px-3 py-2 text-[13px] font-medium text-[#6B6B6B] transition-colors hover:bg-[#1A1A1A] hover:text-white"
             onClick={() => setAddFriendOpen(true)}
