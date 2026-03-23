@@ -1,17 +1,10 @@
-/**
- * Challenge detail — /challenge/[id]
- * Server page: auth, load challenge + members + vlog feed from Supabase, render ChallengeClient.
- */
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ChallengeClient } from "./ui/ChallengeClient";
 
 function startOfTodayUtcIso() {
   const d = new Date();
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}T00:00:00.000Z`;
 }
 
 export default async function ChallengePage({
@@ -24,9 +17,7 @@ export default async function ChallengePage({
   const supabase = createSupabaseServerClient();
   const challengeId = params?.id?.trim?.();
 
-  if (!challengeId || challengeId === "undefined" || challengeId === "null") {
-    redirect("/dashboard");
-  }
+  if (!challengeId) redirect("/dashboard");
 
   const {
     data: { user }
@@ -40,115 +31,87 @@ export default async function ChallengePage({
     .maybeSingle();
   if (!profile) redirect("/onboarding");
 
-  // Member path first (matches dashboard) — avoids RLS blocking direct challenges reads
+  // Fetch challenge (via membership or direct for public)
   const { data: membershipRow } = await supabase
     .from("challenge_members")
-    .select(
-      `
-      challenge_id,
-      challenges (
-        id, title, duration_days, start_date, end_date, invite_code,
-        created_by, is_public, status, parent_challenge_id
-      )
-    `
-    )
+    .select("challenge_id, challenges (*)")
     .eq("challenge_id", challengeId)
     .eq("user_id", user.id)
     .maybeSingle();
 
-  let challenge = (membershipRow as { challenges?: Record<string, unknown> } | null)?.challenges ?? null;
+  let challenge = (membershipRow as { challenges?: Record<string, unknown> })?.challenges ?? null;
 
   if (!challenge) {
-    const { data: publicChallenge } = await supabase
+    const { data: pub } = await supabase
       .from("challenges")
-      .select(
-        "id, title, duration_days, start_date, end_date, invite_code, created_by, is_public, status, parent_challenge_id"
-      )
+      .select("*")
       .eq("id", challengeId)
       .eq("is_public", true)
       .maybeSingle();
-    challenge = publicChallenge;
+    challenge = pub;
   }
 
   if (!challenge) redirect("/dashboard");
 
+  // Members
   const { data: members } = await supabase
     .from("challenge_members")
-    .select(
-      `id, role, current_streak, longest_streak, total_vlogs, total_points, joined_at,
-       users ( id, username, display_name, avatar_url )`
-    )
+    .select("id, role, current_streak, longest_streak, total_vlogs, total_points, users ( id, username, display_name, avatar_url )")
     .eq("challenge_id", challengeId);
 
-  const memberList =
-    members?.map((m: Record<string, unknown>) => {
-      const u = m.users as Record<string, unknown> | null | undefined;
-      return {
-        membershipId: m.id as string,
-        userId: (u?.id ?? "") as string,
-        username: (u?.username ?? "") as string,
-        displayName: (u?.display_name ?? "") as string,
-        avatarUrl: (u?.avatar_url ?? null) as string | null,
-        role: (m.role ?? "member") as string,
-        currentStreak: (m.current_streak ?? 0) as number,
-        totalVlogs: (m.total_vlogs ?? 0) as number,
-        totalPoints: (m.total_points ?? 0) as number
-      };
-    }) ?? [];
+  const memberList = (members ?? []).map((m: Record<string, unknown>) => {
+    const u = m.users as Record<string, unknown> | null;
+    return {
+      membershipId: m.id,
+      userId: u?.id ?? "",
+      username: u?.username ?? "",
+      displayName: u?.display_name ?? "",
+      avatarUrl: u?.avatar_url ?? null,
+      role: m.role ?? "member",
+      currentStreak: m.current_streak ?? 0,
+      totalVlogs: m.total_vlogs ?? 0,
+      totalPoints: m.total_points ?? 0
+    };
+  });
 
   const todayStart = startOfTodayUtcIso();
   const today = new Date();
   const endDate = challenge.end_date ? new Date(challenge.end_date as string) : null;
-  const isCompleted =
-    challenge.status === "completed" || (endDate != null && today > endDate);
+  const isCompleted = challenge.status === "completed" || (endDate && today > endDate);
 
-  // Full feed: recent proofs for this challenge (not only today)
-  const challengeStart = challenge.start_date
-    ? `${String(challenge.start_date)}T00:00:00.000Z`
-    : null;
-
+  // Vlog feed
+  const startDate = challenge.start_date ? `${challenge.start_date}T00:00:00.000Z` : null;
   let vlogQuery = supabase
     .from("vlogs")
-    .select(
-      "id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at, proof_type"
-    )
+    .select("id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at, proof_type")
     .eq("challenge_id", challengeId)
     .order("created_at", { ascending: false })
     .limit(100);
-
-  if (challengeStart) {
-    vlogQuery = vlogQuery.gte("created_at", challengeStart);
-  }
+  if (startDate) vlogQuery = vlogQuery.gte("created_at", startDate);
 
   const { data: vlogs } = await vlogQuery;
 
-  const vlogList =
-    vlogs?.map((v: Record<string, unknown>) => ({
-      id: v.id as string,
-      userId: v.user_id as string,
-      videoUrl: (v.video_url ?? null) as string | null,
-      thumbnailUrl: (v.thumbnail_url ?? null) as string | null,
-      caption: (v.caption ?? null) as string | null,
-      durationSeconds: (v.duration_seconds ?? null) as number | null,
-      dayNumber: (v.day_number ?? null) as number | null,
-      createdAt: v.created_at as string,
-      proofType: (v.proof_type ?? "vlog") as "vlog" | "selfie" | "checkin"
-    })) ?? [];
+  const vlogList = (vlogs ?? []).map((v: Record<string, unknown>) => ({
+    id: v.id,
+    userId: v.user_id,
+    videoUrl: v.video_url ?? null,
+    thumbnailUrl: v.thumbnail_url ?? null,
+    caption: v.caption ?? null,
+    durationSeconds: v.duration_seconds ?? null,
+    dayNumber: v.day_number ?? null,
+    createdAt: v.created_at,
+    proofType: (v.proof_type ?? "vlog") as "vlog" | "selfie" | "checkin"
+  }));
 
   const vlogIds = vlogList.map((v) => v.id);
-  let reactionRows: { vlog_id: string; emoji: string }[] = [];
-  if (vlogIds.length > 0) {
-    const { data: reactions } = await supabase
-      .from("reactions")
-      .select("vlog_id, emoji")
-      .in("vlog_id", vlogIds);
-    reactionRows = (reactions as { vlog_id: string; emoji: string }[]) ?? [];
-  }
-
   const reactionCounts: Record<string, Record<string, number>> = {};
-  for (const r of reactionRows) {
-    reactionCounts[r.vlog_id] ||= {};
-    reactionCounts[r.vlog_id][r.emoji] = (reactionCounts[r.vlog_id][r.emoji] ?? 0) + 1;
+  if (vlogIds.length > 0) {
+    const { data: reactions } = await supabase.from("reactions").select("vlog_id, emoji").in("vlog_id", vlogIds);
+    for (const r of reactions ?? []) {
+      const row = r as { vlog_id: string; emoji: string };
+      reactionCounts[row.vlog_id] ||= {};
+      reactionCounts[row.vlog_id][row.emoji] = (reactionCounts[row.vlog_id][row.emoji] ?? 0) + 1;
+    }
   }
 
   const yourMembership = memberList.find((m) => m.userId === user.id) ?? null;
@@ -179,10 +142,7 @@ export default async function ChallengePage({
         parentChallengeId: (challenge.parent_challenge_id ?? null) as string | null
       }}
       members={memberList}
-      initialFeed={{
-        vlogs: vlogList,
-        reactionCounts
-      }}
+      initialFeed={{ vlogs: vlogList, reactionCounts }}
       yourMembership={yourMembership}
       youPostedToday={youPostedToday}
       isCompleted={!!isCompleted}
