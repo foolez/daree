@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -147,9 +146,11 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
   const [selfieFacingMode, setSelfieFacingMode] = useState<"user" | "environment">("user");
   const [selfieCaptured, setSelfieCaptured] = useState<string | null>(null);
   const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
+  const [uploadedVideoFile, setUploadedVideoFile] = useState<File | null>(null);
   const [challengeInfo, setChallengeInfo] = useState<{ dayNumber: number; durationDays: number } | null>(null);
   const toast = useToast();
-  const router = useRouter();
+  const vlogFileInputRef = useRef<HTMLInputElement>(null);
+  const selfieFileInputRef = useRef<HTMLInputElement>(null);
 
   const mediaSupported =
     typeof window !== "undefined" &&
@@ -257,7 +258,11 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
   }, [mode, selfieCaptured, selfieFacingMode]);
 
   function startSegment() {
-    if (!stream) return;
+    const s = streamRef.current ?? stream;
+    if (!s) {
+      alert("Camera not ready. Please wait for the camera to start.");
+      return;
+    }
     if (reachedMax) return;
 
     setError(null);
@@ -265,7 +270,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
       ? "video/webm;codecs=vp9"
       : "video/webm";
-    const recorder = new MediaRecorder(stream, { mimeType });
+    const recorder = new MediaRecorder(s, { mimeType });
     recorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
@@ -317,45 +322,49 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
   }
 
   async function post() {
-    if (!combinedUrl) return;
+    const fileToUpload = uploadedVideoFile ?? (segments.length > 0 ? new File([combineSegments(segments)], `${todayIsoDate()}.webm`, { type: "video/webm" }) : null);
+    if (!fileToUpload) return;
     setStatus("uploading");
     setError(null);
     setUploadProgress(0);
 
-    const combined = combineSegments(segments);
-    const file = new File([combined], `${todayIsoDate()}.webm`, { type: "video/webm" });
-
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", fileToUpload);
     form.append("challenge_id", challengeId);
     form.append("caption", caption.slice(0, 200));
-    form.append("duration_seconds", String(Math.round(totalRecordedMs / 1000)));
+    form.append("duration_seconds", uploadedVideoFile ? "0" : String(Math.round(totalRecordedMs / 1000)));
     form.append("proof_type", "vlog");
 
-    // Fake progress (fetch doesn't expose upload progress). Keeps UI alive.
-    const progTimer = setInterval(() => {
-      setUploadProgress((p) => (p < 90 ? p + 3 : p));
-    }, 220);
+    const progTimer = setInterval(() => setUploadProgress((p) => (p < 90 ? p + 3 : p)), 220);
 
-    const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
-    const data = await res.json().catch(() => ({}));
-    clearInterval(progTimer);
+    try {
+      const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
+      clearInterval(progTimer);
 
-    if (!res.ok) {
+      if (!res.ok) {
+        setStatus("error");
+        setError(data.error ?? "Upload failed.");
+        setUploadProgress(0);
+        alert(`Upload failed: ${data.error ?? "Unknown error"}`);
+        return;
+      }
+
+      setUploadProgress(100);
+      const streak = data.current_streak ?? null;
+      setPostedStreak(streak);
+      setStatus("success");
+      const streakParam = streak != null ? `&streak=${streak}` : "";
+      alert("Upload success! Redirecting...");
+      window.location.href = `/challenge/${challengeId}?posted=vlog${streakParam}`;
+    } catch (err) {
+      clearInterval(progTimer);
       setStatus("error");
-      setError(data.error ?? "Upload failed.");
       setUploadProgress(0);
-      return;
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      alert(`Upload failed: ${msg}`);
     }
-
-    setUploadProgress(100);
-    const streak = data.current_streak ?? null;
-    setPostedStreak(streak);
-    setStatus("success");
-    const streakParam = streak != null ? `&streak=${streak}` : "";
-    setTimeout(() => {
-      router.push(`/challenge/${challengeId}?posted=vlog${streakParam}`);
-    }, 1100);
   }
 
   function rerecord() {
@@ -364,41 +373,54 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     setSegmentMs([]);
     setCurrentStart(null);
     setCombinedUrl(null);
+    setUploadedVideoFile(null);
     setCaption("");
     setStatus("idle");
     setUploadProgress(0);
     setError(null);
   }
 
-  async function fallbackUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleVlogFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setStatus("uploading");
-    setError(null);
-    setUploadProgress(10);
-
-    const form = new FormData();
-    form.append("file", f);
-    form.append("challenge_id", challengeId);
-    form.append("caption", caption.slice(0, 200));
-    form.append("duration_seconds", "0");
-    form.append("proof_type", "vlog");
-
-    const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
-    const data = await res.json().catch(() => ({}));
-    setUploadProgress(100);
-
-    if (!res.ok) {
-      setStatus("error");
-      setError(data.error ?? "Upload failed.");
+    if (!f.type.startsWith("video/")) {
+      alert("Please select a video file.");
       return;
     }
+    try {
+      setUploadedVideoFile(f);
+      setCombinedUrl(URL.createObjectURL(f));
+      setPhase("preview");
+      setCaption("");
+      setError(null);
+      setStatus("idle");
+      setTimeout(() => previewRef.current?.play().catch(() => {}), 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error: ${msg}`);
+    }
+    e.target.value = "";
+  }
 
-    setPostedStreak(data.current_streak ?? null);
-    setStatus("success");
-    setTimeout(() => {
-      router.push(`/challenge/${challengeId}`);
-    }, 1100);
+  function handleSelfieFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+    try {
+      selfieStreamRef.current?.getTracks().forEach((t) => t.stop());
+      selfieStreamRef.current = null;
+      setSelfieStream(null);
+      setSelfieBlob(f);
+      setSelfieCaptured(URL.createObjectURL(f));
+      setError(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Error: ${msg}`);
+    }
+    e.target.value = "";
   }
 
   async function submitCheckin() {
@@ -414,21 +436,20 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     }
     toast.showToast("Checked in. Your streak is safe — but your ranking isn't.", "warning");
     setTimeout(() => {
-      router.push(`/challenge/${challengeId}`);
+      window.location.href = `/challenge/${challengeId}`;
     }, 800);
   }
 
   async function postSelfie() {
     if (!selfieBlob) {
-      console.error("[Selfie] No blob to upload");
+      alert("No image to upload.");
       return;
     }
-    console.log("[Selfie] Starting upload...");
     setStatus("uploading");
     setError(null);
     setUploadProgress(0);
 
-    const file = new File([selfieBlob], `${todayIsoDate()}_selfie.jpg`, { type: "image/jpeg" });
+    const file = selfieBlob instanceof File ? selfieBlob : new File([selfieBlob], `${todayIsoDate()}_selfie.jpg`, { type: "image/jpeg" });
     const form = new FormData();
     form.append("file", file);
     form.append("challenge_id", challengeId);
@@ -437,37 +458,33 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     form.append("proof_type", "selfie");
 
     const progTimer = setInterval(() => setUploadProgress((p) => (p < 90 ? p + 3 : p)), 220);
-    let res: Response;
-    let data: { current_streak?: number | null; error?: string } = {};
+
     try {
-      console.log("[Selfie] Calling /api/vlogs/upload...");
-      res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
-      console.log("[Selfie] Upload response status:", res.status);
-      data = await res.json().catch(() => ({}));
-      console.log("[Selfie] Upload response data:", data);
-    } catch (err) {
-      console.error("[Selfie] Upload failed:", err);
-      setStatus("error");
-      setError("Upload failed. Check your connection and try again.");
+      const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
       clearInterval(progTimer);
-      return;
-    }
-    clearInterval(progTimer);
 
-    if (!res.ok) {
-      console.error("[Selfie] Upload not OK:", res.status, data);
+      if (!res.ok) {
+        setStatus("error");
+        setError(data.error ?? "Upload failed.");
+        alert(`Upload failed: ${data.error ?? "Unknown error"}`);
+        return;
+      }
+
+      setUploadProgress(100);
+      const streak = data.current_streak ?? null;
+      setPostedStreak(streak);
+      setStatus("success");
+      const streakParam = streak != null ? `&streak=${streak}` : "";
+      alert("Upload success! Redirecting...");
+      window.location.href = `/challenge/${challengeId}?posted=selfie${streakParam}`;
+    } catch (err) {
+      clearInterval(progTimer);
       setStatus("error");
-      setError(data.error ?? "Upload failed.");
-      return;
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      alert(`Upload failed: ${msg}`);
     }
-
-    console.log("[Selfie] Upload success, redirecting...");
-    setUploadProgress(100);
-    const streak = data.current_streak ?? null;
-    setPostedStreak(streak);
-    setStatus("success");
-    const streakParam = streak != null ? `&streak=${streak}` : "";
-    router.push(`/challenge/${challengeId}?posted=selfie${streakParam}`);
   }
 
   const progressPct = clamp((totalRecordedMs / maxMs) * 100, 0, 100);
@@ -615,6 +632,18 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
               <canvas ref={canvasRef} className="hidden" />
             </div>
             <div className="border-t border-[#2A2A2A] bg-black/80 px-5 py-8 backdrop-blur">
+              <div className="mb-4">
+                <label className="block w-full rounded-xl border border-[#2A2A2A] bg-[#111111] px-4 py-3 text-center text-sm font-medium text-white hover:bg-[#1A1A1A]">
+                  Upload photo from gallery
+                  <input
+                    ref={selfieFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSelfieFileSelect}
+                  />
+                </label>
+              </div>
               <div className="flex justify-center">
                 <button
                   onClick={() => {
@@ -651,6 +680,12 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
           </div>
         ) : (
           <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-10 pt-20">
+            <button
+              onClick={() => { selfieStreamRef.current?.getTracks().forEach((t) => t.stop()); selfieStreamRef.current = null; setSelfieStream(null); setSelfieCaptured(null); setSelfieBlob(null); setMode("picker"); }}
+              className="mb-4 self-start text-sm text-[#6B6B6B] hover:text-white"
+            >
+              ← Back
+            </button>
             <div className="relative overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#0A0A0A]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selfieCaptured} alt="Selfie" className="w-full object-cover" style={{ aspectRatio: "4/3", transform: "scaleX(-1)" }} />
@@ -707,6 +742,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
                 setSegments([]);
                 setSegmentMs([]);
                 setCombinedUrl(null);
+                setUploadedVideoFile(null);
                 setCaption("");
               }
             } else {
@@ -715,6 +751,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
               setSegments([]);
               setSegmentMs([]);
               setCombinedUrl(null);
+              setUploadedVideoFile(null);
               setCaption("");
             }
           }}
@@ -817,6 +854,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
               <button
                 onClick={() => {
+                  alert("Record tapped");
                   if (!mediaSupported) return;
                   if (status === "recording") pauseSegment();
                   else startSegment();
@@ -841,20 +879,18 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
               </button>
             </div>
 
-            {(!mediaSupported || status === "error") && (
-              <div className="mt-4">
-                <label className="block w-full rounded-2xl bg-[#00FF88] px-4 py-4 text-center text-sm font-semibold text-black">
-                  Upload video instead
-                  <input
-                    type="file"
-                    accept="video/*,image/*"
-                    capture="user"
-                    className="hidden"
-                    onChange={fallbackUpload}
-                  />
-                </label>
-              </div>
-            )}
+            <div className="mt-4">
+              <label className="block w-full rounded-2xl border border-[#1E1E1E] bg-[#111111] px-4 py-4 text-center text-sm font-semibold text-white hover:bg-[#1A1A1A]">
+                Upload video from gallery
+                <input
+                  ref={vlogFileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={handleVlogFileSelect}
+                />
+              </label>
+            </div>
 
             {error && <p className="mt-3 text-sm text-[#FF3B3B]">{error}</p>}
           </div>
