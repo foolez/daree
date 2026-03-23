@@ -1,8 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+
+function dayNumberFromStart(startDate: string): number {
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const today = new Date();
+  const day = 24 * 60 * 60 * 1000;
+  const au = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const bu = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return Math.max(1, Math.floor((bu - au) / day) + 1);
+}
 
 type Mode = "picker" | "vlog" | "selfie";
 type Phase = "record" | "preview";
@@ -120,6 +130,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
 
   const [segments, setSegments] = useState<Blob[]>([]);
@@ -136,7 +147,9 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
   const [selfieFacingMode, setSelfieFacingMode] = useState<"user" | "environment">("user");
   const [selfieCaptured, setSelfieCaptured] = useState<string | null>(null);
   const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
+  const [challengeInfo, setChallengeInfo] = useState<{ dayNumber: number; durationDays: number } | null>(null);
   const toast = useToast();
+  const router = useRouter();
 
   const mediaSupported =
     typeof window !== "undefined" &&
@@ -161,53 +174,70 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     return () => clearInterval(t);
   }, [status]);
 
+  useEffect(() => {
+    if (!challengeId) return;
+    console.log("[Record] Fetching challenge info for", challengeId);
+    fetch(`/api/challenges/${challengeId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.start_date && data.duration_days) {
+          const dn = dayNumberFromStart(data.start_date);
+          setChallengeInfo({ dayNumber: dn, durationDays: data.duration_days });
+          console.log("[Record] Challenge info:", dn, "of", data.duration_days);
+        }
+      })
+      .catch((err) => console.error("[Record] Failed to fetch challenge:", err));
+  }, [challengeId]);
+
   async function startCamera(cameraMode: "user" | "environment") {
+    console.log("[Record] startCamera called, facingMode:", cameraMode);
     setStatus("preparing");
     setError(null);
     try {
+      console.log("[Record] Requesting getUserMedia...");
       const s = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: cameraMode,
-          width: { ideal: 720 },
-          height: { ideal: 1280 }
-        },
+        video: { facingMode: cameraMode },
         audio: true
       });
+      console.log("[Record] getUserMedia success, stream:", s.id);
+      streamRef.current = s;
       setStream(s);
       setFacingMode(cameraMode);
       if (videoRef.current) {
+        console.log("[Record] Setting video srcObject and play");
         videoRef.current.srcObject = s;
-        await videoRef.current.play().catch(() => {});
+        await videoRef.current.play().catch((err) => console.error("[Record] video.play error:", err));
+      } else {
+        console.warn("[Record] videoRef.current is null, cannot attach stream");
       }
       setStatus("idle");
     } catch (e: unknown) {
+      console.error("[Record] Camera error:", e);
       const msg = e instanceof Error ? e.message : "Could not access camera/mic.";
-      let friendly = "Camera access denied. Allow camera and microphone, or upload a video instead.";
+      let friendly = "Camera access denied. Please allow camera access in your browser settings.";
       if (msg.includes("NotFoundError") || msg.includes("not found")) friendly = "No camera found.";
-      else if (msg.includes("NotAllowedError") || msg.includes("Permission denied")) friendly = "Camera permission denied. Please allow access.";
+      else if (msg.includes("NotAllowedError") || msg.includes("Permission denied")) friendly = "Camera access denied. Please allow camera access in your browser settings.";
       else if (msg.includes("secure")) friendly = "Camera requires HTTPS. Use localhost for development.";
       setError(friendly);
       setStatus("error");
     }
   }
 
-  async function handleRecordVlogClick() {
-    if (!mediaSupported) {
-      setMode("vlog");
-      setStatus("idle");
-      return;
-    }
+  function handleRecordVlogClick() {
     setMode("vlog");
-    await startCamera("user");
   }
 
   useEffect(() => {
     if (!mediaSupported || mode !== "vlog") return;
+    console.log("[Record] useEffect: starting camera (mode=vlog)");
+    startCamera(facingMode);
     return () => {
+      console.log("[Record] Cleanup: stopping recorder and stream");
       recorderRef.current?.stop();
-      stream?.getTracks().forEach((t) => t.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     };
-  }, [mode, mediaSupported, stream]);
+  }, [mode, mediaSupported, facingMode]);
 
   useEffect(() => {
     if (mode !== "selfie" || selfieCaptured) return;
@@ -324,7 +354,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     setStatus("success");
     const streakParam = streak != null ? `&streak=${streak}` : "";
     setTimeout(() => {
-      window.location.href = `/challenge/${challengeId}?posted=vlog${streakParam}`;
+      router.push(`/challenge/${challengeId}?posted=vlog${streakParam}`);
     }, 1100);
   }
 
@@ -367,7 +397,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     setPostedStreak(data.current_streak ?? null);
     setStatus("success");
     setTimeout(() => {
-      window.location.href = `/challenge/${challengeId}`;
+      router.push(`/challenge/${challengeId}`);
     }, 1100);
   }
 
@@ -384,12 +414,16 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     }
     toast.showToast("Checked in. Your streak is safe — but your ranking isn't.", "warning");
     setTimeout(() => {
-      window.location.href = `/challenge/${challengeId}`;
+      router.push(`/challenge/${challengeId}`);
     }, 800);
   }
 
   async function postSelfie() {
-    if (!selfieBlob) return;
+    if (!selfieBlob) {
+      console.error("[Selfie] No blob to upload");
+      return;
+    }
+    console.log("[Selfie] Starting upload...");
     setStatus("uploading");
     setError(null);
     setUploadProgress(0);
@@ -406,10 +440,13 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     let res: Response;
     let data: { current_streak?: number | null; error?: string } = {};
     try {
+      console.log("[Selfie] Calling /api/vlogs/upload...");
       res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
+      console.log("[Selfie] Upload response status:", res.status);
       data = await res.json().catch(() => ({}));
+      console.log("[Selfie] Upload response data:", data);
     } catch (err) {
-      console.error("Selfie upload failed:", err);
+      console.error("[Selfie] Upload failed:", err);
       setStatus("error");
       setError("Upload failed. Check your connection and try again.");
       clearInterval(progTimer);
@@ -418,17 +455,19 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     clearInterval(progTimer);
 
     if (!res.ok) {
+      console.error("[Selfie] Upload not OK:", res.status, data);
       setStatus("error");
       setError(data.error ?? "Upload failed.");
       return;
     }
 
+    console.log("[Selfie] Upload success, redirecting...");
     setUploadProgress(100);
     const streak = data.current_streak ?? null;
     setPostedStreak(streak);
     setStatus("success");
     const streakParam = streak != null ? `&streak=${streak}` : "";
-    window.location.href = `/challenge/${challengeId}?posted=selfie${streakParam}`;
+    router.push(`/challenge/${challengeId}?posted=selfie${streakParam}`);
   }
 
   const progressPct = clamp((totalRecordedMs / maxMs) * 100, 0, 100);
@@ -568,8 +607,9 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
               <video
                 ref={selfieVideoRef}
                 className="h-full w-full object-cover"
-                muted
+                autoPlay
                 playsInline
+                muted
                 style={{ transform: "scaleX(-1)" }}
               />
               <canvas ref={canvasRef} className="hidden" />
@@ -688,11 +728,12 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
         </div>
 
         <button
-          onClick={async () => {
+          onClick={() => {
             const next = facingMode === "user" ? "environment" : "user";
-            stream?.getTracks().forEach((t) => t.stop());
+            streamRef.current?.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
             setStream(null);
-            await startCamera(next);
+            setFacingMode(next);
           }}
           className="rounded-2xl border border-[#2A2A2A] bg-black/40 p-2 text-white"
           aria-label="Flip camera"
@@ -709,8 +750,10 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
-                muted
+                autoPlay
                 playsInline
+                muted
+                style={{ transform: "scaleX(-1)" }}
               />
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[#0A0A0A] px-6 text-center">
@@ -728,7 +771,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
             )}
 
             <div className="absolute left-4 top-16 rounded-2xl border border-[#2A2A2A] bg-black/40 px-3 py-2 text-xs font-semibold">
-              Day ? of ?
+              Day {challengeInfo ? `${challengeInfo.dayNumber} of ${challengeInfo.durationDays}` : "? of ?"}
             </div>
           </div>
 

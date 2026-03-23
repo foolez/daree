@@ -16,7 +16,7 @@ const FAQ = [
   },
   {
     q: "How do I delete my account?",
-    a: "Contact us at support@daree.app with your account email to request deletion. We'll process it within 7 days."
+    a: "Contact us at dareapp@gmail.com with your account email to request deletion. We'll process it within 7 days."
   },
   {
     q: "Can I leave a challenge?",
@@ -103,7 +103,7 @@ export function HelpClient({
           <h2 className="mb-3 text-[14px] font-semibold text-[#6B6B6B]">Contact us</h2>
           <div className="space-y-3">
             <a
-              href="mailto:support@daree.app"
+              href="mailto:dareapp@gmail.com"
               className="flex h-12 w-full items-center justify-center rounded-xl border border-[#1E1E1E] bg-[#111111] text-[15px] font-medium text-white hover:bg-[#1A1A1A]"
             >
               Email us

@@ -32,6 +32,7 @@ export async function POST(request: Request) {
 
   const form = await request.formData().catch(() => null);
   if (!form) {
+    console.error("[Upload] Invalid form data");
     return NextResponse.json({ error: "Invalid upload." }, { status: 400 });
   }
 
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
 
   const isSelfie = proof_type === "selfie";
   const isVideo = file.type.startsWith("video/");
+  console.log("[Upload] Starting:", { challenge_id, proof_type, isSelfie, fileType: file.type });
 
   const { data: challenge, error: challengeError } = await supabase
     .from("challenges")
@@ -58,10 +60,12 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (challengeError || !challenge) {
+    console.error("[Upload] Challenge error:", challengeError, "challenge:", challenge);
     return NextResponse.json({ error: "Challenge not found." }, { status: 404 });
   }
 
   const dn = dayNumber(challenge.start_date);
+  console.log("[Upload] Day number:", dn);
   const ext = isSelfie || !isVideo ? "jpg" : "webm";
   const path = isSelfie
     ? `${challenge_id}/${user.id}/${todayIsoDate()}_selfie.${ext}`
@@ -79,11 +83,13 @@ export async function POST(request: Request) {
     });
 
   if (uploadError) {
+    console.error("[Upload] Storage upload failed:", uploadError);
     return NextResponse.json(
       { error: `Storage upload failed: ${uploadError.message}` },
       { status: 500 }
     );
   }
+  console.log("[Upload] Storage upload success, path:", path);
 
   const { data: { publicUrl } } = supabase.storage.from("vlogs").getPublicUrl(path);
 
@@ -98,8 +104,13 @@ export async function POST(request: Request) {
   });
 
   if (insertError) {
-    return NextResponse.json({ error: "Could not save vlog." }, { status: 500 });
+    console.error("[Upload] vlogs insert failed:", insertError);
+    return NextResponse.json(
+      { error: `Could not save vlog: ${insertError.message}` },
+      { status: 500 }
+    );
   }
+  console.log("[Upload] vlogs insert success");
 
   const pointsToAdd = isSelfie ? 2 : 3;
 
