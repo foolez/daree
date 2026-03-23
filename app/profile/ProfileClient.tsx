@@ -51,6 +51,7 @@ type DayState = {
   label: string;
   key: string;
   posted: boolean;
+  proofType: "vlog" | "selfie" | "checkin" | null;
   isToday: boolean;
   isFuture: boolean;
 };
@@ -301,6 +302,9 @@ export function ProfileClient(props: {
   currentStreak: number;
   longestStreak: number;
   totalVlogs: number;
+  vlogCount: number;
+  selfieCount: number;
+  checkinCount: number;
   activeChallenges: ActiveChallenge[];
   pendingRequests: PendingRequest[];
   last7Days: DayState[];
@@ -413,7 +417,9 @@ export function ProfileClient(props: {
             <p className="text-[24px] font-bold text-white">
               <CountUp value={props.totalVlogs} />
             </p>
-            <p className="mt-1 text-[12px] text-[#6B6B6B]">vlogs</p>
+            <p className="mt-1 text-[12px] text-[#6B6B6B]">
+              {props.vlogCount} vlogs · {props.selfieCount} selfies · {props.checkinCount} check-ins
+            </p>
           </div>
         </section>
 
@@ -423,28 +429,33 @@ export function ProfileClient(props: {
             this week
           </h2>
           <div className="mt-3 flex justify-between gap-1">
-            {props.last7Days.map((d, i) => (
-              <motion.div
-                key={d.key}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.05, duration: 0.2 }}
-                className="flex flex-col items-center gap-2"
-              >
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                    d.posted
-                      ? "bg-[#00FF88]"
-                      : d.isToday
-                      ? "border-2 border-dashed border-[#00FF88] bg-transparent"
-                      : d.isFuture
-                      ? "bg-[#1A1A1A]"
-                      : "bg-[#FF4444]/40"
-                  } ${d.isToday ? "animate-pulse" : ""}`}
-                />
-                <span className="text-[11px] font-medium text-[#6B6B6B]">{d.label}</span>
-              </motion.div>
-            ))}
+            {props.last7Days.map((d, i) => {
+              const dotColor = d.isFuture
+                ? "bg-[#1A1A1A]"
+                : d.posted
+                ? d.proofType === "vlog" || d.proofType === "selfie"
+                  ? "bg-[#00FF88]"
+                  : "bg-[#FF8C00]"
+                : d.isToday
+                ? "border-2 border-dashed border-[#00FF88] bg-transparent"
+                : "bg-[#FF4444]/40";
+              return (
+                <motion.div
+                  key={d.key}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  className="flex flex-col items-center gap-2"
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${dotColor} ${
+                      d.isToday && !d.posted ? "animate-pulse" : ""
+                    }`}
+                  />
+                  <span className="text-[11px] font-medium text-[#6B6B6B]">{d.label}</span>
+                </motion.div>
+              );
+            })}
           </div>
           <p className="mt-3 text-center text-[13px] text-[#3A3A3A]">
             Keep posting to grow your streak

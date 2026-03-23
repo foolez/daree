@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -119,23 +119,133 @@ function IconZap(props: { className?: string }) {
   );
 }
 
+const NUDGE_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+const NUDGE_STORAGE_KEY = "daree_nudges";
+
 function NudgeButton(props: {
   nudged: boolean;
   onClick: () => void;
   username: string;
+  userId: string;
 }) {
+  const [phase, setPhase] = useState<"idle" | "animating" | "sent" | "cooldown">("idle");
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [remainingMins, setRemainingMins] = useState<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(NUDGE_STORAGE_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      const ts = data[props.userId];
+      if (ts && typeof ts === "number") {
+        const until = ts + NUDGE_COOLDOWN_MS;
+        if (Date.now() < until) {
+          setCooldownUntil(until);
+          setPhase("cooldown");
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [props.userId]);
+
+  useEffect(() => {
+    if (!cooldownUntil) return;
+    const tick = () => {
+      const left = cooldownUntil - Date.now();
+      if (left <= 0) {
+        setCooldownUntil(null);
+        setRemainingMins(null);
+        setPhase("idle");
+        try {
+          const raw = localStorage.getItem(NUDGE_STORAGE_KEY);
+          const data = raw ? JSON.parse(raw) : {};
+          delete data[props.userId];
+          localStorage.setItem(NUDGE_STORAGE_KEY, JSON.stringify(data));
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+      setRemainingMins(Math.ceil(left / 60000));
+    };
+    tick();
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, [cooldownUntil, props.userId]);
+
+  const disabled = phase === "cooldown" || props.nudged;
+
+  async function handleClick() {
+    if (disabled) return;
+    if (typeof navigator?.vibrate === "function") navigator.vibrate(50);
+    setPhase("animating");
+    props.onClick();
+    const until = Date.now() + NUDGE_COOLDOWN_MS;
+    setCooldownUntil(until);
+    try {
+      const raw = localStorage.getItem(NUDGE_STORAGE_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      data[props.userId] = Date.now();
+      localStorage.setItem(NUDGE_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      /* ignore */
+    }
+    setTimeout(() => setPhase("sent"), 300);
+    setTimeout(() => setPhase("cooldown"), 1800);
+  }
+
+  const showSent = phase === "sent";
+  const inCooldown = phase === "cooldown";
+
   return (
-    <motion.button
-      onClick={props.onClick}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.15, ease: "easeOut" }}
-      className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 ${
-        props.nudged ? "bg-[#00FF88] text-black" : "bg-[#1A1A1A] text-[#6B6B6B] border border-[#1E1E1E]"
-      }`}
-      aria-label={`Nudge ${props.username}`}
-    >
-      <IconZap className="h-4 w-4" />
-    </motion.button>
+    <div className="flex flex-col items-center">
+      <motion.button
+        onClick={handleClick}
+        disabled={disabled}
+        className={`relative flex h-10 w-10 shrink-0 items-center justify-center overflow-visible rounded-full border border-[#2A2A2A] bg-[#1A1A1A] transition-opacity duration-150 ${
+          disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
+        }`}
+        aria-label={`Nudge ${props.username}`}
+        animate={phase === "animating" ? { scale: [1, 1.2, 1] } : {}}
+        transition={{
+          duration: 0.3,
+          times: [0, 0.33, 1],
+          ease: "easeOut"
+        }}
+      >
+        {phase === "animating" && (
+          <motion.span
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#FF8C00]"
+            initial={{ width: 40, height: 40, opacity: 0.3 }}
+            animate={{ width: 80, height: 80, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          />
+        )}
+        {showSent ? (
+          <span className="text-[11px] font-medium text-[#00FF88]">Sent!</span>
+        ) : (
+          <span
+            className="transition-colors duration-100"
+            style={{
+              color:
+                phase === "animating"
+                  ? "#FF8C00"
+                  : inCooldown
+                  ? "#6B6B6B"
+                  : "#6B6B6B"
+            }}
+          >
+            <IconZap className="h-4 w-4" />
+          </span>
+        )}
+      </motion.button>
+      {inCooldown && remainingMins != null && (
+        <span className="mt-1 text-[10px] text-[#6B6B6B]">
+          Nudge again in {remainingMins}m
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -388,6 +498,7 @@ export function DashboardClient(props: {
   friends: FriendCircle[];
   globalTop5: GlobalLeader[];
 }) {
+  const router = useRouter();
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
@@ -837,6 +948,7 @@ export function DashboardClient(props: {
                         nudged={!!nudgedById[f.userId]}
                         onClick={() => nudgeFriend(f)}
                         username={f.username}
+                        userId={f.userId}
                       />
                     </div>
                   ))}
@@ -915,11 +1027,20 @@ export function DashboardClient(props: {
             <div className="mt-3 grid gap-3">
               {challenges.map((c, i) => {
                 const { dayNumber, daysRemaining, progress } = getProgress(c);
+                const href = `/challenge/${c.id}`;
                 return (
-                  <Link
+                  <div
                     key={c.id}
-                    href={`/challenge/${c.id}`}
-                    className="block cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(href)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(href);
+                      }
+                    }}
+                    className="relative z-10 block cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -965,7 +1086,7 @@ export function DashboardClient(props: {
                       </span>
                       <span className="tabular-nums text-white">{daysRemaining} days left</span>
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
             </div>

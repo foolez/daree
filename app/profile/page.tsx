@@ -72,12 +72,21 @@ export default async function ProfilePage() {
       )
     : 0;
 
-  const { count: totalVlogsDirect } = await supabase
+  const { data: vlogRows } = await supabase
     .from("vlogs")
-    .select("id", { count: "exact", head: true })
+    .select("id, proof_type")
     .eq("user_id", user.id);
 
-  const totalVlogs = totalVlogsDirect ?? totalVlogsFromMemberships ?? 0;
+  const vlogCount = (vlogRows ?? []).filter(
+    (v: any) => (v.proof_type ?? "vlog") === "vlog"
+  ).length;
+  const selfieCount = (vlogRows ?? []).filter(
+    (v: any) => (v.proof_type ?? "vlog") === "selfie"
+  ).length;
+  const checkinCount = (vlogRows ?? []).filter(
+    (v: any) => (v.proof_type ?? "vlog") === "checkin"
+  ).length;
+  const totalVlogs = vlogCount + selfieCount + checkinCount;
 
   const challengeIds = (memberships ?? [])
     .map((m: any) => m.challenges?.id ?? m.challenge_id)
@@ -223,15 +232,19 @@ export default async function ProfilePage() {
 
   const { data: recentVlogs } = await supabase
     .from("vlogs")
-    .select("id, created_at")
+    .select("id, created_at, proof_type")
     .eq("user_id", user.id)
     .gte("created_at", sevenDaysAgo.toISOString());
 
-  const postedByDay = new Set<string>();
+  const proofRank = { vlog: 3, selfie: 2, checkin: 1 };
+  const dayProof: Record<string, "vlog" | "selfie" | "checkin"> = {};
   for (const v of recentVlogs ?? []) {
     const d = new Date(v.created_at as string);
     const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    postedByDay.add(key);
+    const pt = (v.proof_type ?? "vlog") as "vlog" | "selfie" | "checkin";
+    if (!dayProof[key] || proofRank[pt] > proofRank[dayProof[key]]) {
+      dayProof[key] = pt;
+    }
   }
 
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -245,10 +258,13 @@ export default async function ProfilePage() {
     const isToday = key === todayKey;
     const isFuture = d > today;
     const shortDay = d.toLocaleDateString(undefined, { weekday: "short" });
+    const proofType = dayProof[key];
+    const posted = !!proofType;
     return {
       label: shortDay.charAt(0),
       key,
-      posted: postedByDay.has(key),
+      posted,
+      proofType: proofType ?? null,
       isToday,
       isFuture
     };
@@ -285,6 +301,9 @@ export default async function ProfilePage() {
       currentStreak={currentStreak}
       longestStreak={longestStreak}
       totalVlogs={totalVlogs}
+      vlogCount={vlogCount}
+      selfieCount={selfieCount}
+      checkinCount={checkinCount}
       activeChallenges={activeChallenges}
       pendingRequests={pendingForClient}
       last7Days={last7Days}

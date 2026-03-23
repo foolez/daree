@@ -29,6 +29,12 @@ export default async function RecordPage() {
 
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("username, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { data: memberships } = await supabase
     .from("challenge_members")
     .select(
@@ -85,6 +91,10 @@ export default async function RecordPage() {
 
   return (
     <RecordClient
+      profile={{
+        username: profile?.username ?? "",
+        avatarUrl: profile?.avatar_url ?? null
+      }}
       challenges={
         challengesList as {
           id: string;

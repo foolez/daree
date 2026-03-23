@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { BottomNav } from "@/components/BottomNav";
 
 type Challenge = {
   id: string;
@@ -26,7 +27,13 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-export function RecordClient({ challenges }: { challenges: Challenge[] }) {
+export function RecordClient({
+  profile,
+  challenges
+}: {
+  profile: { username: string; avatarUrl: string | null };
+  challenges: Challenge[];
+}) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -159,6 +166,13 @@ export function RecordClient({ challenges }: { challenges: Challenge[] }) {
           </div>
         )}
       </div>
+
+      <BottomNav
+        profile={{
+          avatarUrl: profile.avatarUrl,
+          username: profile.username
+        }}
+      />
     </main>
   );
 }

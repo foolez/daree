@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   const senderName =
-    senderProfile?.username || senderProfile?.display_name || "Someone";
-  const message = `${senderName} just nudged you to post your proof! Don't slack.`;
+    senderProfile?.display_name || senderProfile?.username || "Someone";
+  const message = `${senderName} gave you a nudge! ⚡ Post your proof.`;
   const { error } = await supabase.from("notifications").insert({
     user_id: receiverId,
     from_user_id: user.id,
