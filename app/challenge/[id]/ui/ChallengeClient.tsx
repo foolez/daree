@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { VlogMenu } from "@/components/ui/VlogMenu";
 import { DeleteVlogDialog } from "@/components/ui/DeleteVlogDialog";
@@ -307,6 +308,7 @@ function IconCrown() {
 
 export function ChallengeClient(props: {
   initialOpenVlogId?: string | null;
+  postedToast?: { type: "vlog" | "selfie"; streak?: string | null } | null;
   /** UTC midnight ISO for “posted today” rings + Record CTA */
   todayStartIso: string;
   viewer: Viewer;
@@ -335,6 +337,23 @@ export function ChallengeClient(props: {
   const [deleteDialogVlogId, setDeleteDialogVlogId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    const pt = props.postedToast;
+    if (!pt) return;
+    const msg =
+      pt.type === "vlog"
+        ? pt.streak
+          ? `Vlog posted! Streak: ${pt.streak} days`
+          : "Vlog posted!"
+        : pt.streak
+        ? `Selfie posted! Streak: ${pt.streak} days`
+        : "Selfie posted!";
+    toast.showToast(msg, "success");
+    router.replace(`/challenge/${props.challenge.id}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const memberById = useMemo(() => {
     const map = new Map<string, Member>();

@@ -161,40 +161,53 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     return () => clearInterval(t);
   }, [status]);
 
-  async function startCamera(mode: "user" | "environment") {
+  async function startCamera(cameraMode: "user" | "environment") {
     setStatus("preparing");
     setError(null);
     try {
       const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode },
+        video: {
+          facingMode: cameraMode,
+          width: { ideal: 720 },
+          height: { ideal: 1280 }
+        },
         audio: true
       });
       setStream(s);
+      setFacingMode(cameraMode);
       if (videoRef.current) {
         videoRef.current.srcObject = s;
         await videoRef.current.play().catch(() => {});
       }
       setStatus("idle");
-    } catch (e: any) {
-      setError(e?.message ?? "Could not access camera/mic.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not access camera/mic.";
+      let friendly = "Camera access denied. Allow camera and microphone, or upload a video instead.";
+      if (msg.includes("NotFoundError") || msg.includes("not found")) friendly = "No camera found.";
+      else if (msg.includes("NotAllowedError") || msg.includes("Permission denied")) friendly = "Camera permission denied. Please allow access.";
+      else if (msg.includes("secure")) friendly = "Camera requires HTTPS. Use localhost for development.";
+      setError(friendly);
       setStatus("error");
     }
   }
 
-  useEffect(() => {
+  async function handleRecordVlogClick() {
     if (!mediaSupported) {
+      setMode("vlog");
       setStatus("idle");
       return;
     }
-    if (mode === "vlog") {
-      startCamera(facingMode).catch(() => {});
-    }
+    setMode("vlog");
+    await startCamera("user");
+  }
+
+  useEffect(() => {
+    if (!mediaSupported || mode !== "vlog") return;
     return () => {
       recorderRef.current?.stop();
       stream?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facingMode, mode]);
+  }, [mode, mediaSupported, stream]);
 
   useEffect(() => {
     if (mode !== "selfie" || selfieCaptured) return;
@@ -219,7 +232,10 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
     setError(null);
     const chunks: BlobPart[] = [];
-    const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+      ? "video/webm;codecs=vp9"
+      : "video/webm";
+    const recorder = new MediaRecorder(stream, { mimeType });
     recorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
@@ -303,10 +319,12 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     }
 
     setUploadProgress(100);
-    setPostedStreak(data.current_streak ?? null);
+    const streak = data.current_streak ?? null;
+    setPostedStreak(streak);
     setStatus("success");
+    const streakParam = streak != null ? `&streak=${streak}` : "";
     setTimeout(() => {
-      window.location.href = `/challenge/${challengeId}`;
+      window.location.href = `/challenge/${challengeId}?posted=vlog${streakParam}`;
     }, 1100);
   }
 
@@ -381,11 +399,22 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     form.append("file", file);
     form.append("challenge_id", challengeId);
     form.append("caption", caption.slice(0, 200));
+    form.append("duration_seconds", "0");
     form.append("proof_type", "selfie");
 
     const progTimer = setInterval(() => setUploadProgress((p) => (p < 90 ? p + 3 : p)), 220);
-    const res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
-    const data = await res.json().catch(() => ({}));
+    let res: Response;
+    let data: { current_streak?: number | null; error?: string } = {};
+    try {
+      res = await fetch("/api/vlogs/upload", { method: "POST", body: form });
+      data = await res.json().catch(() => ({}));
+    } catch (err) {
+      console.error("Selfie upload failed:", err);
+      setStatus("error");
+      setError("Upload failed. Check your connection and try again.");
+      clearInterval(progTimer);
+      return;
+    }
     clearInterval(progTimer);
 
     if (!res.ok) {
@@ -395,9 +424,11 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
     }
 
     setUploadProgress(100);
-    setPostedStreak(data.current_streak ?? null);
+    const streak = data.current_streak ?? null;
+    setPostedStreak(streak);
     setStatus("success");
-    setTimeout(() => { window.location.href = `/challenge/${challengeId}`; }, 1100);
+    const streakParam = streak != null ? `&streak=${streak}` : "";
+    window.location.href = `/challenge/${challengeId}?posted=selfie${streakParam}`;
   }
 
   const progressPct = clamp((totalRecordedMs / maxMs) * 100, 0, 100);
@@ -419,7 +450,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
           <div className="space-y-4">
             <button
-              onClick={() => setMode("vlog")}
+              onClick={handleRecordVlogClick}
               className="flex w-full items-center justify-between rounded-2xl border border-[#1E1E1E] bg-[#111111] px-5 py-5 transition-colors hover:bg-[#1A1A1A]"
             >
               <div className="flex items-center gap-4">
@@ -657,7 +688,12 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
         </div>
 
         <button
-          onClick={() => setFacingMode((m) => (m === "user" ? "environment" : "user"))}
+          onClick={async () => {
+            const next = facingMode === "user" ? "environment" : "user";
+            stream?.getTracks().forEach((t) => t.stop());
+            setStream(null);
+            await startCamera(next);
+          }}
           className="rounded-2xl border border-[#2A2A2A] bg-black/40 p-2 text-white"
           aria-label="Flip camera"
           disabled={!mediaSupported || status === "uploading"}
@@ -669,7 +705,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
       {phase === "record" ? (
         <div className="mx-auto flex min-h-screen max-w-md flex-col">
           <div className="relative flex-1">
-            {mediaSupported ? (
+            {mediaSupported && status !== "error" ? (
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
@@ -677,9 +713,17 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
                 playsInline
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[#0A0A0A] px-6 text-center text-sm text-[#888888]">
-                Your browser doesn’t support in-app recording. Upload a video or
-                photo instead.
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[#0A0A0A] px-6 text-center">
+                {/* Error/camera fallback */}
+                {status === "error" && error && (
+                  <p className="text-sm text-[#FF4444]">{error}</p>
+                )}
+                <p className="text-sm text-[#888888]">
+                  {!mediaSupported
+                    ? "Your browser doesn't support in-app recording."
+                    : "Camera couldn't start."}{" "}
+                  Upload a video instead.
+                </p>
               </div>
             )}
 
@@ -754,13 +798,14 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
               </button>
             </div>
 
-            {!mediaSupported && (
+            {(!mediaSupported || status === "error") && (
               <div className="mt-4">
                 <label className="block w-full rounded-2xl bg-[#00FF88] px-4 py-4 text-center text-sm font-semibold text-black">
-                  Upload video/photo
+                  Upload video instead
                   <input
                     type="file"
                     accept="video/*,image/*"
+                    capture="user"
                     className="hidden"
                     onChange={fallbackUpload}
                   />

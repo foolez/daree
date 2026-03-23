@@ -12,7 +12,7 @@ export default async function ChallengePage({
   searchParams
 }: {
   params: { id: string };
-  searchParams: { vlog?: string };
+  searchParams: { vlog?: string; posted?: string; streak?: string };
 }) {
   const supabase = createSupabaseServerClient();
   const challengeId = params?.id?.trim?.();
@@ -120,6 +120,9 @@ export default async function ChallengePage({
   return (
     <ChallengeClient
       initialOpenVlogId={searchParams?.vlog ?? null}
+      postedToast={
+        searchParams?.posted ? { type: searchParams.posted as "vlog" | "selfie", streak: searchParams?.streak } : null
+      }
       todayStartIso={todayStart}
       viewer={{
         id: user.id,

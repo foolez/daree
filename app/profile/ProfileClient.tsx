@@ -456,22 +456,34 @@ export function ProfileClient(props: {
             account
           </h2>
           <div className="mt-3 overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111]">
-            <button className="flex h-12 w-full items-center justify-between border-b border-[#1E1E1E] px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]">
+            <Link
+              href="/profile/edit"
+              className="flex h-12 w-full items-center justify-between border-b border-[#1E1E1E] px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]"
+            >
               Edit profile
               <span className="text-[#6B6B6B]">›</span>
-            </button>
-            <button className="flex h-12 w-full items-center justify-between border-b border-[#1E1E1E] px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]">
+            </Link>
+            <Link
+              href="/profile/notifications"
+              className="flex h-12 w-full items-center justify-between border-b border-[#1E1E1E] px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]"
+            >
               Notifications
               <span className="text-[#6B6B6B]">›</span>
-            </button>
-            <button className="flex h-12 w-full items-center justify-between border-b border-[#1E1E1E] px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]">
+            </Link>
+            <Link
+              href="/profile/privacy"
+              className="flex h-12 w-full items-center justify-between border-b border-[#1E1E1E] px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]"
+            >
               Privacy
               <span className="text-[#6B6B6B]">›</span>
-            </button>
-            <button className="flex h-12 w-full items-center justify-between px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]">
+            </Link>
+            <Link
+              href="/profile/help"
+              className="flex h-12 w-full items-center justify-between px-4 text-left text-[15px] text-white hover:bg-[#1A1A1A]"
+            >
               Help & feedback
               <span className="text-[#6B6B6B]">›</span>
-            </button>
+            </Link>
           </div>
 
           <div className="mt-4 border-t border-[#1E1E1E] pt-4">
