@@ -18,6 +18,11 @@ export default async function ChallengePage({
   searchParams: { vlog?: string };
 }) {
   const supabase = createSupabaseServerClient();
+  const challengeId = params?.id?.trim?.();
+
+  if (!challengeId || challengeId === "undefined" || challengeId === "null") {
+    redirect("/dashboard");
+  }
 
   const {
     data: { user }
@@ -31,11 +36,33 @@ export default async function ChallengePage({
     .maybeSingle();
   if (!profile) redirect("/onboarding");
 
-  const { data: challenge } = await supabase
-    .from("challenges")
-    .select("id, title, duration_days, start_date, end_date, invite_code, created_by, is_public, status, parent_challenge_id")
-    .eq("id", params.id)
+  // Fetch via challenge_members first (same path as dashboard) — avoids RLS issues on challenges
+  const { data: membershipRow } = await supabase
+    .from("challenge_members")
+    .select(
+      `
+      challenge_id,
+      challenges (
+        id, title, duration_days, start_date, end_date, invite_code,
+        created_by, is_public, status, parent_challenge_id
+      )
+    `
+    )
+    .eq("challenge_id", challengeId)
+    .eq("user_id", user.id)
     .maybeSingle();
+
+  let challenge = (membershipRow as any)?.challenges ?? null;
+
+  if (!challenge) {
+    const { data: publicChallenge } = await supabase
+      .from("challenges")
+      .select("id, title, duration_days, start_date, end_date, invite_code, created_by, is_public, status, parent_challenge_id")
+      .eq("id", challengeId)
+      .eq("is_public", true)
+      .maybeSingle();
+    challenge = publicChallenge;
+  }
 
   if (!challenge) redirect("/dashboard");
 
@@ -45,7 +72,7 @@ export default async function ChallengePage({
       `id, role, current_streak, longest_streak, total_vlogs, total_points, joined_at,
        users ( id, username, display_name, avatar_url )`
     )
-    .eq("challenge_id", params.id);
+    .eq("challenge_id", challengeId);
 
   const memberList =
     members?.map((m: any) => ({
@@ -72,7 +99,7 @@ export default async function ChallengePage({
     .select(
       `id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at, proof_type`
     )
-    .eq("challenge_id", params.id)
+    .eq("challenge_id", challengeId)
     .gte("created_at", todayStart)
     .order("created_at", { ascending: false });
 

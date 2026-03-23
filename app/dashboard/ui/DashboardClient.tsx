@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -498,7 +498,6 @@ export function DashboardClient(props: {
   friends: FriendCircle[];
   globalTop5: GlobalLeader[];
 }) {
-  const router = useRouter();
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
@@ -1028,16 +1027,18 @@ export function DashboardClient(props: {
               {challenges.map((c, i) => {
                 const { dayNumber, daysRemaining, progress } = getProgress(c);
                 const href = `/challenge/${c.id}`;
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                const isValidId = c.id && typeof c.id === "string" && uuidRegex.test(c.id);
+                if (!isValidId && typeof window !== "undefined") {
+                  console.warn("[Challenge card] Invalid challenge.id:", c.id, "title:", c.title);
+                }
                 return (
-                  <div
+                  <Link
                     key={c.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push(href)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        router.push(href);
+                    href={href}
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        console.log("[Challenge card] Navigating to:", href, "challenge.id:", c.id, "valid:", isValidId);
                       }
                     }}
                     className="relative z-10 block cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
@@ -1086,7 +1087,7 @@ export function DashboardClient(props: {
                       </span>
                       <span className="tabular-nums text-white">{daysRemaining} days left</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
