@@ -1,12 +1,16 @@
+/**
+ * Challenge detail — /challenge/[id]
+ * Server page: auth, load challenge + members + vlog feed from Supabase, render ChallengeClient.
+ */
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ChallengeClient } from "./ui/ChallengeClient";
 
-function startOfTodayIso() {
+function startOfTodayUtcIso() {
   const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
 }
 
@@ -36,7 +40,7 @@ export default async function ChallengePage({
     .maybeSingle();
   if (!profile) redirect("/onboarding");
 
-  // Fetch via challenge_members first (same path as dashboard) — avoids RLS issues on challenges
+  // Member path first (matches dashboard) — avoids RLS blocking direct challenges reads
   const { data: membershipRow } = await supabase
     .from("challenge_members")
     .select(
@@ -52,12 +56,14 @@ export default async function ChallengePage({
     .eq("user_id", user.id)
     .maybeSingle();
 
-  let challenge = (membershipRow as any)?.challenges ?? null;
+  let challenge = (membershipRow as { challenges?: Record<string, unknown> } | null)?.challenges ?? null;
 
   if (!challenge) {
     const { data: publicChallenge } = await supabase
       .from("challenges")
-      .select("id, title, duration_days, start_date, end_date, invite_code, created_by, is_public, status, parent_challenge_id")
+      .select(
+        "id, title, duration_days, start_date, end_date, invite_code, created_by, is_public, status, parent_challenge_id"
+      )
       .eq("id", challengeId)
       .eq("is_public", true)
       .maybeSingle();
@@ -75,36 +81,49 @@ export default async function ChallengePage({
     .eq("challenge_id", challengeId);
 
   const memberList =
-    members?.map((m: any) => ({
-      membershipId: m.id as string,
-      userId: m.users?.id as string,
-      username: (m.users?.username ?? "") as string,
-      displayName: (m.users?.display_name ?? "") as string,
-      avatarUrl: (m.users?.avatar_url ?? null) as string | null,
-      role: (m.role ?? "member") as string,
-      currentStreak: (m.current_streak ?? 0) as number,
-      totalVlogs: (m.total_vlogs ?? 0) as number,
-      totalPoints: (m.total_points ?? 0) as number
-    })) ?? [];
+    members?.map((m: Record<string, unknown>) => {
+      const u = m.users as Record<string, unknown> | null | undefined;
+      return {
+        membershipId: m.id as string,
+        userId: (u?.id ?? "") as string,
+        username: (u?.username ?? "") as string,
+        displayName: (u?.display_name ?? "") as string,
+        avatarUrl: (u?.avatar_url ?? null) as string | null,
+        role: (m.role ?? "member") as string,
+        currentStreak: (m.current_streak ?? 0) as number,
+        totalVlogs: (m.total_vlogs ?? 0) as number,
+        totalPoints: (m.total_points ?? 0) as number
+      };
+    }) ?? [];
 
-  // Today’s vlogs for “posted today” status and initial feed.
-  const todayStart = startOfTodayIso();
+  const todayStart = startOfTodayUtcIso();
   const today = new Date();
-  const endDate = challenge ? new Date(challenge.end_date) : null;
+  const endDate = challenge.end_date ? new Date(challenge.end_date as string) : null;
   const isCompleted =
-    !!challenge &&
-    (challenge.status === "completed" || (endDate && today > endDate));
-  const { data: vlogs } = await supabase
+    challenge.status === "completed" || (endDate != null && today > endDate);
+
+  // Full feed: recent proofs for this challenge (not only today)
+  const challengeStart = challenge.start_date
+    ? `${String(challenge.start_date)}T00:00:00.000Z`
+    : null;
+
+  let vlogQuery = supabase
     .from("vlogs")
     .select(
-      `id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at, proof_type`
+      "id, user_id, video_url, thumbnail_url, caption, duration_seconds, day_number, created_at, proof_type"
     )
     .eq("challenge_id", challengeId)
-    .gte("created_at", todayStart)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (challengeStart) {
+    vlogQuery = vlogQuery.gte("created_at", challengeStart);
+  }
+
+  const { data: vlogs } = await vlogQuery;
 
   const vlogList =
-    vlogs?.map((v: any) => ({
+    vlogs?.map((v: Record<string, unknown>) => ({
       id: v.id as string,
       userId: v.user_id as string,
       videoUrl: (v.video_url ?? null) as string | null,
@@ -123,7 +142,7 @@ export default async function ChallengePage({
       .from("reactions")
       .select("vlog_id, emoji")
       .in("vlog_id", vlogIds);
-    reactionRows = (reactions as any) ?? [];
+    reactionRows = (reactions as { vlog_id: string; emoji: string }[]) ?? [];
   }
 
   const reactionCounts: Record<string, Record<string, number>> = {};
@@ -132,30 +151,32 @@ export default async function ChallengePage({
     reactionCounts[r.vlog_id][r.emoji] = (reactionCounts[r.vlog_id][r.emoji] ?? 0) + 1;
   }
 
-  // Find your membership (for streak + “posted today”).
   const yourMembership = memberList.find((m) => m.userId === user.id) ?? null;
-  const youPostedToday = vlogList.some((v) => v.userId === user.id);
+  const youPostedToday = vlogList.some(
+    (v) => v.userId === user.id && new Date(v.createdAt).getTime() >= new Date(todayStart).getTime()
+  );
 
   return (
     <ChallengeClient
       initialOpenVlogId={searchParams?.vlog ?? null}
+      todayStartIso={todayStart}
       viewer={{
         id: user.id,
         username: profile.username,
-        displayName: profile.display_name,
+        displayName: profile.display_name ?? profile.username,
         avatarUrl: profile.avatar_url ?? null
       }}
       challenge={{
-        id: challenge.id,
-        title: challenge.title,
-        durationDays: challenge.duration_days,
-        startDate: challenge.start_date,
-        endDate: challenge.end_date,
-        inviteCode: challenge.invite_code,
-        createdBy: challenge.created_by,
-        isPublic: challenge.is_public ?? false,
-        status: challenge.status ?? "active",
-        parentChallengeId: challenge.parent_challenge_id ?? null
+        id: challenge.id as string,
+        title: challenge.title as string,
+        durationDays: (challenge.duration_days ?? 0) as number,
+        startDate: (challenge.start_date ?? "") as string,
+        endDate: (challenge.end_date ?? "") as string,
+        inviteCode: (challenge.invite_code ?? "") as string,
+        createdBy: (challenge.created_by ?? "") as string,
+        isPublic: (challenge.is_public ?? false) as boolean,
+        status: (challenge.status ?? "active") as string,
+        parentChallengeId: (challenge.parent_challenge_id ?? null) as string | null
       }}
       members={memberList}
       initialFeed={{
@@ -168,4 +189,3 @@ export default async function ChallengePage({
     />
   );
 }
-

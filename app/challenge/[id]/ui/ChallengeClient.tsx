@@ -307,6 +307,8 @@ function IconCrown() {
 
 export function ChallengeClient(props: {
   initialOpenVlogId?: string | null;
+  /** UTC midnight ISO for “posted today” rings + Record CTA */
+  todayStartIso: string;
   viewer: Viewer;
   challenge: Challenge;
   members: Member[];
@@ -355,11 +357,18 @@ export function ChallengeClient(props: {
   );
   const progress = clamp(dayNumber / props.challenge.durationDays, 0, 1);
 
+  const todayStartMs = useMemo(
+    () => new Date(props.todayStartIso).getTime(),
+    [props.todayStartIso]
+  );
+
   const postedTodayUserIds = useMemo(() => {
     const set = new Set<string>();
-    feedVlogs.forEach((v) => set.add(v.userId));
+    feedVlogs.forEach((v) => {
+      if (new Date(v.createdAt).getTime() >= todayStartMs) set.add(v.userId);
+    });
     return set;
-  }, [feedVlogs]);
+  }, [feedVlogs, todayStartMs]);
 
   const youPostedToday = props.youPostedToday || postedTodayUserIds.has(props.viewer.id);
 
@@ -668,8 +677,13 @@ export function ChallengeClient(props: {
                     <button
                     key={m.userId}
                     onClick={() => {
-                      const vlog = feedVlogs.find((v) => v.userId === m.userId);
-                      if (!vlog || vlog.proofType === "checkin") return;
+                      const vlog = feedVlogs.find(
+                        (v) =>
+                          v.userId === m.userId &&
+                          new Date(v.createdAt).getTime() >= todayStartMs &&
+                          v.proofType !== "checkin"
+                      );
+                      if (!vlog) return;
                       setPlayerVlogId(vlog.id);
                       setPlayerOpen(true);
                     }}
@@ -695,7 +709,7 @@ export function ChallengeClient(props: {
                 <div className="mb-3 text-[#3A3A3A]">
                   <IconCamera />
                 </div>
-                <p className="text-[15px] text-[#6B6B6B]">No vlogs yet today</p>
+                <p className="text-[15px] text-[#6B6B6B]">No proof posted yet</p>
                 <p className="mt-1 text-[13px] text-[#3A3A3A]">Be the first to post</p>
               </div>
             ) : (
