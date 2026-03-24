@@ -148,6 +148,7 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
   const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
   const [uploadedVideoFile, setUploadedVideoFile] = useState<File | null>(null);
   const [challengeInfo, setChallengeInfo] = useState<{ dayNumber: number; durationDays: number } | null>(null);
+  const [showUploadFallback, setShowUploadFallback] = useState(false);
   const toast = useToast();
   const vlogFileInputRef = useRef<HTMLInputElement>(null);
   const selfieFileInputRef = useRef<HTMLInputElement>(null);
@@ -230,15 +231,19 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (!mediaSupported || mode !== "vlog") return;
-    console.log("[Record] useEffect: starting camera (mode=vlog)");
     startCamera(facingMode);
     return () => {
-      console.log("[Record] Cleanup: stopping recorder and stream");
       recorderRef.current?.stop();
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
   }, [mode, mediaSupported, facingMode]);
+
+  useEffect(() => {
+    if (mode !== "vlog" || phase !== "record") return;
+    const t = setTimeout(() => setShowUploadFallback(true), 3000);
+    return () => clearTimeout(t);
+  }, [mode, phase]);
 
   useEffect(() => {
     if (mode !== "selfie" || selfieCaptured) return;
@@ -259,7 +264,10 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
   function startSegment() {
     const s = streamRef.current ?? stream;
-    if (!s) return;
+    if (!s) {
+      setError("Camera not ready. Use 'Or upload from gallery' below.");
+      return;
+    }
     if (reachedMax) return;
     if (status === "recording") return;
 
@@ -867,11 +875,11 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
                     startSegment();
                   }
                 }}
-                disabled={!mediaSupported || status === "uploading" || status === "preparing" || reachedMax || !stream}
+                disabled={status === "uploading" || reachedMax}
                 className={`flex h-20 w-20 items-center justify-center rounded-full disabled:opacity-60 ${
                   status === "recording"
                     ? "bg-[#FF3B3B] animate-pulse"
-                    : "bg-[#6B6B6B]"
+                    : "bg-[#FF3B3B]"
                 }`}
                 aria-label="Record"
               >
@@ -892,8 +900,8 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
             </div>
 
             <div className="mt-4">
-              <label className="block w-full rounded-2xl border border-[#1E1E1E] bg-[#111111] px-4 py-4 text-center text-sm font-semibold text-white hover:bg-[#1A1A1A]">
-                Upload video from gallery
+              <label className="flex h-20 w-full items-center justify-center rounded-2xl border border-[#1E1E1E] bg-[#111111] text-center text-sm font-semibold text-white transition-colors hover:bg-[#1A1A1A]">
+                Or upload from gallery
                 <input
                   ref={vlogFileInputRef}
                   type="file"
@@ -902,6 +910,11 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
                   onChange={handleVlogFileSelect}
                 />
               </label>
+              {showUploadFallback && (status === "error" || status === "preparing") && (
+                <p className="mt-2 text-center text-[12px] text-[#6B6B6B]">
+                  Recording not available? Use upload above.
+                </p>
+              )}
             </div>
 
             {error && <p className="mt-3 text-sm text-[#FF3B3B]">{error}</p>}

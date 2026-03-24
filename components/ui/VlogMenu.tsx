@@ -62,7 +62,7 @@ export function VlogMenu({ isOwnVlog, onDelete, className = "" }: VlogMenuProps)
             }}
             className="flex h-11 w-full items-center px-4 text-left text-[14px] font-medium text-[#FF4444] transition-colors hover:bg-[#111111]"
           >
-            Delete vlog
+            Delete post
           </button>
         </div>
       )}

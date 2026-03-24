@@ -21,7 +21,7 @@ export async function DELETE(
 
   const { data: vlog, error: vlogError } = await supabase
     .from("vlogs")
-    .select("id, user_id, challenge_id, video_url, created_at")
+    .select("id, user_id, challenge_id, video_url, proof_type, created_at")
     .eq("id", vlogId)
     .maybeSingle();
 
@@ -33,14 +33,16 @@ export async function DELETE(
     return NextResponse.json({ error: "Can only delete your own vlogs" }, { status: 403 });
   }
 
-  const created = new Date(vlog.created_at);
-  const yyyy = created.getFullYear();
-  const mm = String(created.getMonth() + 1).padStart(2, "0");
-  const dd = String(created.getDate()).padStart(2, "0");
-  const dateStr = `${yyyy}-${mm}-${dd}`;
-  const storagePath = `${vlog.challenge_id}/${vlog.user_id}/${dateStr}.webm`;
-
-  await supabase.storage.from("vlogs").remove([storagePath]);
+  if (vlog.video_url) {
+    const created = new Date(vlog.created_at);
+    const yyyy = created.getFullYear();
+    const mm = String(created.getMonth() + 1).padStart(2, "0");
+    const dd = String(created.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const ext = vlog.proof_type === "selfie" ? "jpg" : "webm";
+    const storagePath = `${vlog.challenge_id}/${vlog.user_id}/${dateStr}${vlog.proof_type === "selfie" ? "_selfie" : ""}.${ext}`;
+    await supabase.storage.from("vlogs").remove([storagePath]);
+  }
 
   const { error: deleteError } = await supabase
     .from("vlogs")
