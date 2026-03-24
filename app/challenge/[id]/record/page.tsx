@@ -259,17 +259,18 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
   function startSegment() {
     const s = streamRef.current ?? stream;
-    if (!s) {
-      alert("Camera not ready. Please wait for the camera to start.");
-      return;
-    }
+    if (!s) return;
     if (reachedMax) return;
+    if (status === "recording") return;
+
+    const tracks = s.getTracks();
+    const allLive = tracks.every((t) => t.readyState === "live");
+    if (!allLive) return;
 
     setError(null);
     const chunks: BlobPart[] = [];
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : "video/webm";
+    const mimeOptions = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeType = mimeOptions.find((m) => MediaRecorder.isTypeSupported(m)) ?? "video/webm";
     const recorder = new MediaRecorder(s, { mimeType });
     recorderRef.current = recorder;
 
@@ -286,9 +287,15 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
       setStatus("paused");
     };
 
-    setCurrentStart(Date.now());
-    setStatus("recording");
-    recorder.start(250);
+    try {
+      setCurrentStart(Date.now());
+      setStatus("recording");
+      recorder.start(1000);
+    } catch (err) {
+      setStatus("paused");
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Recording failed: ${msg}`);
+    }
   }
 
   function pauseSegment() {
@@ -854,18 +861,23 @@ export default function RecordVlogPage({ params }: { params: { id: string } }) {
 
               <button
                 onClick={() => {
-                  alert("Record tapped");
-                  if (!mediaSupported) return;
-                  if (status === "recording") pauseSegment();
-                  else startSegment();
+                  if (status === "recording") {
+                    pauseSegment();
+                  } else {
+                    startSegment();
+                  }
                 }}
-                disabled={!mediaSupported || status === "uploading" || reachedMax}
-                className="flex h-20 w-20 items-center justify-center rounded-full bg-[#FF3B3B] text-black disabled:opacity-60"
+                disabled={!mediaSupported || status === "uploading" || status === "preparing" || reachedMax || !stream}
+                className={`flex h-20 w-20 items-center justify-center rounded-full disabled:opacity-60 ${
+                  status === "recording"
+                    ? "bg-[#FF3B3B] animate-pulse"
+                    : "bg-[#6B6B6B]"
+                }`}
                 aria-label="Record"
               >
                 <div
-                  className={`h-8 w-8 ${
-                    status === "recording" ? "rounded-lg bg-black/30" : "rounded-full bg-black/30"
+                  className={`h-8 w-8 rounded-full bg-white/30 ${
+                    status === "recording" ? "scale-90" : ""
                   }`}
                 />
               </button>
