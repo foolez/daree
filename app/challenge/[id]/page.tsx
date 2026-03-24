@@ -88,7 +88,23 @@ export default async function ChallengePage({
 
   const { data: vlogs } = await vlogQuery;
 
-  const vlogList = (vlogs ?? []).map((v: Record<string, unknown>) => ({
+  type VlogRow = { user_id: string; created_at: string; [k: string]: unknown };
+  const rawList = (vlogs ?? []) as VlogRow[];
+  const byUserDay = new Map<string, VlogRow>();
+  for (const v of rawList) {
+    const d = new Date(v.created_at);
+    const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    const key = `${v.user_id}:${dateKey}`;
+    const existing = byUserDay.get(key);
+    if (!existing || new Date(v.created_at).getTime() > new Date(existing.created_at).getTime()) {
+      byUserDay.set(key, v);
+    }
+  }
+  const deduped = Array.from(byUserDay.values())
+    .filter((v) => (v.video_url != null && v.video_url !== "") || v.proof_type === "checkin")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const vlogList = deduped.map((v: Record<string, unknown>) => ({
     id: v.id as string,
     userId: v.user_id as string,
     videoUrl: (v.video_url ?? null) as string | null,

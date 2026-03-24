@@ -53,6 +53,12 @@ type Vlog = {
 
 const EMOJIS = ["🔥", "💪", "👀", "😤", "❤️"] as const;
 
+function bustCache(url: string | null, vlogId: string): string | null {
+  if (!url) return null;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}t=${encodeURIComponent(vlogId)}`;
+}
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -252,14 +258,14 @@ function FullscreenPlayer(props: {
         {props.vlog.proofType === "selfie" && props.vlog.videoUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={props.vlog.videoUrl}
+            src={bustCache(props.vlog.videoUrl, props.vlog.id)!}
             alt="Selfie"
             className="max-h-[82vh] w-full rounded-2xl border border-[#2A2A2A] object-contain bg-black"
           />
         ) : (
           <video
             ref={videoRef}
-            src={props.vlog.videoUrl ?? undefined}
+            src={bustCache(props.vlog.videoUrl, props.vlog.id) ?? undefined}
             className="max-h-[82vh] w-full rounded-2xl border border-[#2A2A2A] bg-black"
             playsInline
             loop
@@ -440,6 +446,7 @@ export function ChallengeClient(props: {
       return;
     }
     toast.showToast("Vlog deleted. Post before midnight to keep streak.", "warning");
+    router.refresh();
     await refreshFeed();
   }
 
@@ -782,6 +789,8 @@ export function ChallengeClient(props: {
                   }
 
                   const mediaUrl = v.videoUrl || v.thumbnailUrl;
+                  const mediaUrlBusted = bustCache(mediaUrl, v.id);
+                  const thumbUrlBusted = bustCache(v.thumbnailUrl || mediaUrl, v.id);
                   const isSelfie = proofType === "selfie";
                   const badgeCls = isSelfie
                     ? "bg-[#4A9EFF] text-white"
@@ -816,18 +825,18 @@ export function ChallengeClient(props: {
                         className="relative mt-2 block w-full overflow-hidden rounded-xl bg-black"
                         aria-label={isSelfie ? "View selfie" : "Play vlog"}
                       >
-                        {mediaUrl ? (
+                        {mediaUrlBusted ? (
                           isSelfie ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
-                              src={mediaUrl}
+                              src={mediaUrlBusted}
                               alt="Selfie"
                               className="aspect-[4/3] w-full object-cover"
                             />
                           ) : (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
-                              src={v.thumbnailUrl || mediaUrl}
+                              src={thumbUrlBusted!}
                               alt="Vlog"
                               className="aspect-video w-full object-cover"
                             />
