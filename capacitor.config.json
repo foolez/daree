@@ -1,6 +1,6 @@
 {
   "appId": "com.daree.app",
   "appName": "Daree",
-  "webDir": "out", // Hata mesajındaki 'www' yazısını burada 'out' yaparak düzeltiyoruz
+  "webDir": "out",
   "bundledWebRuntime": false
 }

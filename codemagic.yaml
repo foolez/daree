@@ -7,11 +7,10 @@ workflows:
       app_store_connect: Codemagic
     environment:
       groups:
-        - supabase_vars # Codemagic panelinden eklediğin grup
+        - supabase_vars
       vars:
-        # Eğer paneldeki grup çalışmazsa buraya gerçek URL ve Key'ini yazabilirsin
-        NEXT_PUBLIC_SUPABASE_URL: "SENİN_SUPABASE_URL_BURAYA"
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: "SENİN_ANON_KEY_BURAYA"
+        # Gerçek değerleri Codemagic Environment variables / supabase_vars grubunda verin.
+        # Buraya geçersiz placeholder yazmayın; next build prerender sırasında Supabase URL doğrulamasından geçmeli.
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
       ios_signing:
@@ -26,9 +25,7 @@ workflows:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
       - name: Build Web Assets (Next.js Export)
-        script: |
-          # Supabase anahtarları olmadan bu adım hata verir
-          npm run build
+        script: npm run build
       - name: Sync Capacitor
         script: npx cap sync ios
       - name: Install CocoaPods
@@ -58,10 +55,6 @@ workflows:
     environment:
       groups:
         - supabase_vars
-      vars:
-        # Paneldeki grup çalışmazsa burası kurtarır:
-        NEXT_PUBLIC_SUPABASE_URL: "SENİN_SUPABASE_URL_BURAYA"
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: "SENİN_ANON_KEY_BURAYA"
       node: 22
       java: 17
     scripts:
