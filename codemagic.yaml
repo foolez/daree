@@ -17,7 +17,9 @@ workflows:
       cocoapods: default
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: |
+          npm install
+          npm install @capacitor/cli @capacitor/core @capacitor/ios
       - name: Sync Capacitor
         script: npx cap sync ios
       - name: Install CocoaPods
@@ -49,7 +51,9 @@ workflows:
       java: 17
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: |
+          npm install
+          npm install @capacitor/cli @capacitor/core @capacitor/android
       - name: Sync Capacitor
         script: npx cap sync android
       - name: Build Android
