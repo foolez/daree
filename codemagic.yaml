@@ -56,7 +56,8 @@ workflows:
       groups:
         - supabase_vars
       node: 22
-      java: 17
+      # Capacitor 8.x Android library compiles with Java 21 (see @capacitor/android build.gradle).
+      java: 21
     scripts:
       - name: Install dependencies
         script: |
