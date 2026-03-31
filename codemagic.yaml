@@ -7,13 +7,16 @@ workflows:
       app_store_connect: Codemagic
     environment:
       groups:
-        - supabase_vars # Codemagic panelinden eklediğin grup ismi
+        - supabase_vars # Codemagic panelinden eklediğin grup
+      vars:
+        # Eğer paneldeki grup çalışmazsa buraya gerçek URL ve Key'ini yazabilirsin
+        NEXT_PUBLIC_SUPABASE_URL: "SENİN_SUPABASE_URL_BURAYA"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "SENİN_ANON_KEY_BURAYA"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.daree.app
-      vars:
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
-        XCODE_SCHEME: "App"
       node: 22
       xcode: latest
       cocoapods: default
@@ -24,7 +27,7 @@ workflows:
           npm install @capacitor/cli @capacitor/core @capacitor/ios
       - name: Build Web Assets (Next.js Export)
         script: |
-          # Supabase anahtarları burada devreye girer
+          # Supabase anahtarları olmadan bu adım hata verir
           npm run build
       - name: Sync Capacitor
         script: npx cap sync ios
@@ -54,20 +57,20 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       groups:
-        - supabase_vars # Codemagic panelinde tanımladığın değişken grubu
+        - supabase_vars
+      vars:
+        # Paneldeki grup çalışmazsa burası kurtarır:
+        NEXT_PUBLIC_SUPABASE_URL: "SENİN_SUPABASE_URL_BURAYA"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "SENİN_ANON_KEY_BURAYA"
       node: 22
       java: 17
     scripts:
       - name: Install dependencies
-        script: |
-          npm install
+        script: npm install
       - name: Build Web Assets (Next.js Export)
-        script: |
-          # Artık environment variables olduğu için bu adım hata vermeyecek
-          npm run build
+        script: npm run build
       - name: Sync Capacitor
-        script: |
-          npx cap sync android
+        script: npx cap sync android
       - name: Build Android
         script: |
           cd android
