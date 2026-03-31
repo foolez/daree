@@ -1,0 +1,8 @@
+{
+  "appId": "com.daree.app",
+  "appName": "Daree",
+  "server": {
+    "url": "https://daree.vercel.app",
+    "cleartext": true
+  }
+}
