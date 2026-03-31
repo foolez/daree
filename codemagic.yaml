@@ -20,6 +20,9 @@ workflows:
         script: |
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
+      - name: Build Web Assets (Next.js Export)
+        script: |
+          npm run build
       - name: Sync Capacitor
         script: npx cap sync ios
       - name: Install CocoaPods
@@ -53,10 +56,18 @@ workflows:
       - name: Install dependencies
         script: |
           npm install
-          npm install @capacitor/cli @capacitor/core @capacitor/android
+      - name: Build Web Assets (Next.js Export)
+        script: |
+          # Bu adım 'out' veya 'www' klasörünü oluşturur
+          npm run build
       - name: Sync Capacitor
-        script: npx cap sync android
+        script: |
+          # Web dosyalarını Android projesine kopyalar
+          npx cap sync android
       - name: Build Android
-        script: cd android && chmod +x gradlew && ./gradlew assembleRelease
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
     artifacts:
       - android/app/build/outputs/**/*.apk

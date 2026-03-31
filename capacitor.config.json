@@ -1,8 +1,6 @@
 {
   "appId": "com.daree.app",
   "appName": "Daree",
-  "server": {
-    "url": "https://daree.vercel.app",
-    "cleartext": true
-  }
+  "webDir": "out", // Hata mesajındaki 'www' yazısını burada 'out' yaparak düzeltiyoruz
+  "bundledWebRuntime": false
 }
