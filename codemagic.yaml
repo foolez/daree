@@ -6,6 +6,8 @@ workflows:
     integrations:
       app_store_connect: Codemagic
     environment:
+      groups:
+        - supabase_vars # Codemagic panelinden eklediğin grup ismi
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.daree.app
@@ -22,6 +24,7 @@ workflows:
           npm install @capacitor/cli @capacitor/core @capacitor/ios
       - name: Build Web Assets (Next.js Export)
         script: |
+          # Supabase anahtarları burada devreye girer
           npm run build
       - name: Sync Capacitor
         script: npx cap sync ios
@@ -50,6 +53,8 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     environment:
+      groups:
+        - supabase_vars # Codemagic panelinde tanımladığın değişken grubu
       node: 22
       java: 17
     scripts:
@@ -58,11 +63,10 @@ workflows:
           npm install
       - name: Build Web Assets (Next.js Export)
         script: |
-          # Bu adım 'out' veya 'www' klasörünü oluşturur
+          # Artık environment variables olduğu için bu adım hata vermeyecek
           npm run build
       - name: Sync Capacitor
         script: |
-          # Web dosyalarını Android projesine kopyalar
           npx cap sync android
       - name: Build Android
         script: |
