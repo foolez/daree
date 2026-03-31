@@ -59,7 +59,9 @@ workflows:
       java: 17
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: |
+          npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
       - name: Build Web Assets (Next.js Export)
         script: npm run build
       - name: Sync Capacitor
