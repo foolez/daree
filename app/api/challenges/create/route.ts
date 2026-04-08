@@ -63,33 +63,40 @@ export async function POST(request: Request) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const invite_code = randomInviteCode();
 
-    const { data: created, error: createError } = await supabase
+    const payload = {
+      title,
+      description: description || null,
+      goal_type,
+      duration_days,
+      start_date,
+      end_date: end.toISOString().slice(0, 10),
+      created_by: user.id,
+      invite_code,
+      is_public: is_public || false,
+      status: "active",
+      parent_challenge_id: parent_challenge_id || null
+    };
+    console.log("Inserting challenge with payload:", payload);
+
+    const { data: created, error: challengeError } = await supabase
       .from("challenges")
-      .insert({
-        title,
-        description,
-        goal_type,
-        duration_days,
-        start_date,
-        end_date: end.toISOString().slice(0, 10),
-        created_by: user.id,
-        invite_code,
-        is_public,
-        status: "active",
-        parent_challenge_id: parent_challenge_id || null
-      })
+      .insert(payload)
       .select("id, invite_code")
       .single();
 
-    if (createError) {
-      lastError = createError;
+    if (challengeError) {
+      lastError = challengeError;
+      console.error("Full error:", challengeError);
       const isDuplicate =
-        createError.code === "23505" ||
-        createError.message.toLowerCase().includes("duplicate");
+        challengeError.code === "23505" ||
+        challengeError.message.toLowerCase().includes("duplicate");
       if (isDuplicate) continue;
 
       return NextResponse.json(
-        { error: "Could not create challenge." },
+        {
+          error: `Error: ${challengeError.message}`,
+          details: challengeError
+        },
         { status: 500 }
       );
     }
@@ -101,8 +108,12 @@ export async function POST(request: Request) {
     });
 
     if (memberError) {
+      console.error("Full membership error:", memberError);
       return NextResponse.json(
-        { error: "Challenge created but membership failed." },
+        {
+          error: `Error: ${memberError.message}`,
+          details: memberError
+        },
         { status: 500 }
       );
     }

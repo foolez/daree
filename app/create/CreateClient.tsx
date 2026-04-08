@@ -97,6 +97,13 @@ export function CreateClient(props: { rematchId?: string | null }) {
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      console.error("Full error:", data);
+      alert(
+        "Error: " +
+          (data.error ?? "Could not create dare. Try again.") +
+          "\n\nDetails: " +
+          JSON.stringify(data.details ?? data)
+      );
       setStatus("error");
       setError(data.error ?? "Could not create dare. Try again.");
       return;
