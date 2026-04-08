@@ -22,13 +22,6 @@ export async function POST(
   if (!challenge) {
     return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
   }
-  if (challenge.created_by === user.id) {
-    return NextResponse.json(
-      { error: "Creator cannot leave their own challenge." },
-      { status: 400 }
-    );
-  }
-
   const { error } = await supabase
     .from("challenge_members")
     .delete()

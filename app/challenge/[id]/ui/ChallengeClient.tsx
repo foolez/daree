@@ -502,7 +502,13 @@ export function ChallengeClient(props: {
       method: "DELETE"
     });
     if (!res.ok) {
-      toast.showToast("Could not delete dare.", "error");
+      const data = await res.json().catch(() => ({}));
+      alert(
+        "Error: " +
+          (data.error ?? "Could not delete dare.") +
+          "\n\nDetails: " +
+          JSON.stringify(data.details ?? data)
+      );
       return;
     }
     router.push("/dashboard");
@@ -584,7 +590,7 @@ export function ChallengeClient(props: {
                   }}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
                 >
-                  Leave 🚪
+                  Leave
                 </button>
                 {isCreator && (
                   <button
@@ -770,7 +776,7 @@ export function ChallengeClient(props: {
                   }}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
                 >
-                  Leave 🚪
+                  Leave
                 </button>
                 {isCreator && (
                   <button
