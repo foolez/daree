@@ -6,16 +6,12 @@ workflows:
     integrations:
       app_store_connect: Codemagic
     environment:
-      groups:
-        - supabase_vars
-      vars:
-        # Gerçek değerleri Codemagic Environment variables / supabase_vars grubunda verin.
-        # Buraya geçersiz placeholder yazmayın; next build prerender sırasında Supabase URL doğrulamasından geçmeli.
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
-        XCODE_SCHEME: "App"
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.daree.app
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
       node: 22
       xcode: latest
       cocoapods: default
@@ -24,16 +20,13 @@ workflows:
         script: |
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
-      - name: Build Web Assets (Next.js Export)
-        script: npm run build
       - name: Sync Capacitor
         script: npx cap sync ios
       - name: Install CocoaPods
         script: cd ios/App && pod install
-      - name: Set up code signing
+      - name: Set up signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "com.daree.app" --type IOS_APP_STORE --create
           keychain add-certificates
           xcode-project use-profiles
       - name: Build iOS
@@ -53,24 +46,16 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     environment:
-      groups:
-        - supabase_vars
       node: 22
-      # Capacitor 8.x Android library compiles with Java 21 (see @capacitor/android build.gradle).
-      java: 21
+      java: 17
     scripts:
       - name: Install dependencies
         script: |
           npm install
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-      - name: Build Web Assets (Next.js Export)
-        script: npm run build
+          npm install @capacitor/cli @capacitor/core @capacitor/android
       - name: Sync Capacitor
         script: npx cap sync android
       - name: Build Android
-        script: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease
+        script: cd android && chmod +x gradlew && ./gradlew assembleRelease
     artifacts:
       - android/app/build/outputs/**/*.apk
