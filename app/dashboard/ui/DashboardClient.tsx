@@ -535,6 +535,29 @@ export function DashboardClient(props: {
   const [notifications, setNotifications] = useState<NotificationItem[]>(
     props.initialNotifications ?? []
   );
+
+  async function syncUnreadCount() {
+    const supabase = createSupabaseBrowserClient();
+    const primary = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", props.profile.id)
+      .eq("is_read", false);
+    if (!primary.error && typeof primary.count === "number") {
+      setUnreadCount(primary.count);
+      return;
+    }
+    const fallback = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", props.profile.id)
+      .eq("read", false);
+    if (!fallback.error && typeof fallback.count === "number") {
+      setUnreadCount(fallback.count);
+    } else {
+      setUnreadCount(0);
+    }
+  }
   async function nudgeFriend(friend: FriendCircle) {
     if (nudgedById[friend.userId]) return;
     // Optimistic UI for instant, haptic-like feedback.
@@ -597,7 +620,7 @@ export function DashboardClient(props: {
             setNudgeBanner(row.message);
             setTimeout(() => setNudgeBanner(null), 6000);
           }
-          if (row?.is_read === false) setUnreadCount((c) => c + 1);
+          syncUnreadCount().catch(() => {});
           setNotifications((prev) => [
             {
               id: String(row?.id ?? crypto.randomUUID?.() ?? Date.now()),
@@ -622,11 +645,7 @@ export function DashboardClient(props: {
         (payload) => {
           const row: any = payload.new;
           const oldRow: any = payload.old;
-          if (oldRow?.is_read === false && row?.is_read === true) {
-            setUnreadCount((c) => Math.max(0, c - 1));
-          } else if (oldRow?.is_read === true && row?.is_read === false) {
-            setUnreadCount((c) => c + 1);
-          }
+          syncUnreadCount().catch(() => {});
           setNotifications((prev) =>
             prev.map((n) =>
               n.id === String(row?.id)
@@ -651,9 +670,7 @@ export function DashboardClient(props: {
         },
         (payload) => {
           const oldRow: any = payload.old;
-          if (oldRow?.is_read === false) {
-            setUnreadCount((c) => Math.max(0, c - 1));
-          }
+          syncUnreadCount().catch(() => {});
           setNotifications((prev) =>
             prev.filter((n) => n.id !== String(oldRow?.id ?? ""))
           );
@@ -664,6 +681,10 @@ export function DashboardClient(props: {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [props.profile.id]);
+
+  useEffect(() => {
+    syncUnreadCount().catch(() => {});
   }, [props.profile.id]);
 
   useEffect(() => {

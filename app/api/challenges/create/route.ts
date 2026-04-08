@@ -42,9 +42,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (![7, 14, 21, 30].includes(duration_days)) {
+  if (!Number.isInteger(duration_days) || duration_days < 1 || duration_days > 365) {
     return NextResponse.json(
-      { error: "Duration must be 7, 14, 21, or 30 days." },
+      { error: "Duration must be a whole number between 1 and 365." },
       { status: 400 }
     );
   }

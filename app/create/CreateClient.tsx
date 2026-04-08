@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect } from "react";
 
 type GoalType = "fitness" | "quit_habit" | "study" | "weight_loss" | "custom";
-type Duration = 7 | 14 | 21 | 30;
 
 const GOALS: { id: GoalType; label: string; emoji: string }[] = [
   { id: "fitness", label: "Fitness", emoji: "🏋️" },
@@ -13,7 +12,7 @@ const GOALS: { id: GoalType; label: string; emoji: string }[] = [
   { id: "custom", label: "Custom", emoji: "🎯" }
 ];
 
-const DURATIONS: Duration[] = [7, 14, 21, 30];
+const DURATIONS = [7, 14, 21, 30] as const;
 
 function tomorrowIso() {
   const d = new Date();
@@ -49,7 +48,8 @@ export function CreateClient(props: { rematchId?: string | null }) {
 
   const [title, setTitle] = useState("");
   const [goalType, setGoalType] = useState<GoalType>("fitness");
-  const [duration, setDuration] = useState<Duration>(30);
+  const [duration, setDuration] = useState<number>(30);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(() => tomorrowIso());
   const [isPublic, setIsPublic] = useState(false);
@@ -63,7 +63,11 @@ export function CreateClient(props: { rematchId?: string | null }) {
       .then((data) => {
         if (data.title) setTitle(`${data.title} (Round 2)`);
         if (data.goal_type) setGoalType(data.goal_type);
-        if (data.duration_days) setDuration(data.duration_days as Duration);
+        if (data.duration_days) {
+          const d = Number(data.duration_days);
+          setDuration(d);
+          setIsCustomDuration(!DURATIONS.includes(d as (typeof DURATIONS)[number]));
+        }
         if (data.description) setDescription(data.description || "");
         if (data.is_public) setIsPublic(data.is_public);
         const d = new Date();
@@ -77,6 +81,11 @@ export function CreateClient(props: { rematchId?: string | null }) {
 
   async function submit() {
     if (!canSubmit || status === "loading") return;
+    if (!Number.isInteger(duration) || duration < 1 || duration > 365) {
+      setStatus("error");
+      setError("Duration must be a whole number between 1 and 365.");
+      return;
+    }
 
     setStatus("loading");
     setError(null);
@@ -163,13 +172,44 @@ export function CreateClient(props: { rematchId?: string | null }) {
               {DURATIONS.map((d) => (
                 <Pill
                   key={d}
-                  selected={duration === d}
-                  onClick={() => setDuration(d)}
+                  selected={!isCustomDuration && duration === d}
+                  onClick={() => {
+                    setDuration(d);
+                    setIsCustomDuration(false);
+                  }}
                 >
                   {d} days
                 </Pill>
               ))}
+              <Pill
+                selected={isCustomDuration}
+                onClick={() => {
+                  setIsCustomDuration(true);
+                  if (!Number.isInteger(duration) || duration < 1 || duration > 365) {
+                    setDuration(30);
+                  }
+                }}
+              >
+                Custom
+              </Pill>
             </div>
+            {isCustomDuration && (
+              <div className="space-y-2 pt-1">
+                <label className="text-xs text-[#888888]">Enter number of days (1-365)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  step={1}
+                  value={duration}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setDuration(Number.isFinite(next) ? Math.trunc(next) : 30);
+                  }}
+                  className="w-full rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-3 text-sm outline-none focus:border-[#00FF88]"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -12,6 +12,7 @@ type Viewer = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  email?: string | null;
 };
 
 type Challenge = {
@@ -342,8 +343,10 @@ export function ChallengeClient(props: {
   );
   const [deleteDialogVlogId, setDeleteDialogVlogId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const toast = useToast();
   const router = useRouter();
+  const isCreator = props.challenge.createdBy === props.viewer.id;
 
   useEffect(() => {
     const pt = props.postedToast;
@@ -471,6 +474,53 @@ export function ChallengeClient(props: {
     setReacting(null);
   }
 
+  function handleReport() {
+    const reason = prompt("What's wrong with this dare?");
+    if (!reason) return;
+    const subject = encodeURIComponent("Report: " + props.challenge.title);
+    const body = encodeURIComponent(
+      "Challenge ID: " +
+        props.challenge.id +
+        "\n" +
+        "Challenge title: " +
+        props.challenge.title +
+        "\n" +
+        "Reported by: " +
+        (props.viewer.email ?? props.viewer.username) +
+        "\n\n" +
+        "Reason:\n" +
+        reason
+    );
+    window.location.href =
+      "mailto:dareapp@gmail.com?subject=" + subject + "&body=" + body;
+  }
+
+  async function handleDeleteChallenge() {
+    const ok = window.confirm("Delete this dare? This cannot be undone.");
+    if (!ok) return;
+    const res = await fetch(`/api/challenges/${props.challenge.id}`, {
+      method: "DELETE"
+    });
+    if (!res.ok) {
+      toast.showToast("Could not delete dare.", "error");
+      return;
+    }
+    router.push("/dashboard");
+  }
+
+  async function handleLeaveChallenge() {
+    const shouldLeave = window.confirm("Are you sure? Loser!");
+    if (!shouldLeave) return;
+    const res = await fetch(`/api/challenges/${props.challenge.id}/leave`, {
+      method: "POST"
+    });
+    if (!res.ok) {
+      toast.showToast("Could not leave dare.", "error");
+      return;
+    }
+    router.push("/dashboard");
+  }
+
   useEffect(() => {
     // Light refresh after mount so reactions stay fresh.
     const t = setTimeout(() => {
@@ -495,10 +545,61 @@ export function ChallengeClient(props: {
     return (
       <main className="min-h-screen bg-[#0A0A0A] text-white">
         <div className="mx-auto max-w-md px-5 pb-24 pt-8">
-          <Link href="/dashboard" className="inline-flex items-center gap-2 text-[#6B6B6B]">
-            <span className="text-xl">←</span>
-            <span className="text-[14px]">Back</span>
-          </Link>
+          <div className="relative flex items-center justify-between">
+            <Link href="/dashboard" className="inline-flex items-center gap-2 text-[#6B6B6B]">
+              <span className="text-xl">←</span>
+              <span className="text-[14px]">Back</span>
+            </Link>
+            <button
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-[#6B6B6B]"
+              aria-label="More options"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <IconMore />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-12 z-20 w-52 rounded-xl border border-[#2A2A2A] bg-[#111111] p-1 shadow-xl">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push(`/challenge/${props.challenge.id}/wrapped`);
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
+                >
+                  View recap
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleReport();
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
+                >
+                  Report
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleLeaveChallenge().catch(() => {});
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
+                >
+                  Leave 🚪
+                </button>
+                {isCreator && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleDeleteChallenge().catch(() => {});
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-[#FF4444] hover:bg-[#1A1A1A]"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <h1 className="mt-6 text-center text-[24px] font-bold">Challenge Complete</h1>
           <p className="mt-2 text-center text-[16px] text-[#6B6B6B]">{props.challenge.title}</p>
           <p className="mt-1 text-center text-[14px] text-[#3A3A3A]">
@@ -574,6 +675,12 @@ export function ChallengeClient(props: {
             >
               Share Results
             </button>
+            <Link
+              href={`/challenge/${props.challenge.id}/wrapped`}
+              className="flex h-12 w-full items-center justify-center rounded-xl border border-[#2A2A2A] bg-transparent text-[16px] font-medium text-white"
+            >
+              View recap
+            </Link>
             <Link href="/dashboard" className="block py-3 text-center text-[14px] text-[#6B6B6B]">
               Back to Dashboard
             </Link>
@@ -630,9 +737,54 @@ export function ChallengeClient(props: {
             <button
               className="flex min-h-[44px] min-w-[44px] items-center justify-center text-[#6B6B6B]"
               aria-label="More options"
+              onClick={() => setMenuOpen((v) => !v)}
             >
               <IconMore />
             </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-12 z-20 w-52 rounded-xl border border-[#2A2A2A] bg-[#111111] p-1 shadow-xl">
+                {isCompleted && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      router.push(`/challenge/${props.challenge.id}/wrapped`);
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
+                  >
+                    View recap
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleReport();
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
+                >
+                  Report
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleLeaveChallenge().catch(() => {});
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-[#1A1A1A]"
+                >
+                  Leave 🚪
+                </button>
+                {isCreator && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleDeleteChallenge().catch(() => {});
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-[#FF4444] hover:bg-[#1A1A1A]"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <p className="mt-2 text-center text-[14px] text-[#6B6B6B]">
             Day {dayNumber} of {props.challenge.durationDays} · {daysRemaining} days left

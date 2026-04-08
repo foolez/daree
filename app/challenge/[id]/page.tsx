@@ -144,7 +144,8 @@ export default async function ChallengePage({
         id: user.id,
         username: profile.username,
         displayName: profile.display_name ?? profile.username,
-        avatarUrl: profile.avatar_url ?? null
+        avatarUrl: profile.avatar_url ?? null,
+        email: user.email ?? null
       }}
       challenge={{
         id: (ch.id ?? "") as string,
