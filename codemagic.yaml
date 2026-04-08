@@ -23,7 +23,12 @@ workflows:
       - name: Sync Capacitor
         script: npx cap sync ios
       - name: Install CocoaPods
-        script: cd ios/App && pod install
+        script: |
+          if [ -f "ios/App/Podfile" ]; then
+            cd ios/App && pod install
+          else
+            echo "No Podfile found, skipping CocoaPods install"
+          fi
       - name: Set up signing
         script: |
           keychain initialize
