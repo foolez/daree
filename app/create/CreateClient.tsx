@@ -102,9 +102,7 @@ export function CreateClient(props: { rematchId?: string | null }) {
       return;
     }
 
-    window.location.href = `/challenge/${data.challenge_id}/invite?code=${encodeURIComponent(
-      data.invite_code
-    )}`;
+    window.location.href = `/challenge/${data.challenge_id}`;
   }
 
   return (
