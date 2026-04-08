@@ -38,6 +38,70 @@ export function LoginClient() {
     }
   }
 
+  async function handleBetaTesterLogin() {
+    const testEmail = "appletest@daree.app";
+    const testPassword = "AppleTest2026!";
+
+    setEmail(testEmail);
+    setPassword(testPassword);
+    setStatus("loading");
+    setError(null);
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword
+      });
+
+      if (!signInError) {
+        window.location.href = redirectTo;
+        return;
+      }
+
+      if (signInError.message.includes("Invalid login credentials")) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: testEmail,
+          password: testPassword,
+          options: {
+            data: {
+              username: "betatester",
+              display_name: "Beta Tester"
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(
+              redirectTo
+            )}`
+          }
+        });
+
+        if (signUpError) {
+          setStatus("error");
+          setError(signUpError.message);
+          return;
+        }
+
+        const { error: signInAgain } = await supabase.auth.signInWithPassword({
+          email: testEmail,
+          password: testPassword
+        });
+
+        if (signInAgain) {
+          setStatus("error");
+          setError(signInAgain.message);
+          return;
+        }
+
+        window.location.href = redirectTo;
+        return;
+      }
+
+      setStatus("error");
+      setError(signInError.message);
+    } catch (err) {
+      setStatus("error");
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
   async function submitEmailPassword() {
     setStatus("loading");
     setError(null);
@@ -159,6 +223,16 @@ export function LoginClient() {
               >
                 {mode === "signup" ? "Create account" : "Sign in"}
               </button>
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={handleBetaTesterLogin}
+                  disabled={status === "loading"}
+                  className="mt-2 w-full text-left text-[12px] text-[#6B6B6B] transition-colors hover:underline disabled:opacity-50"
+                >
+                  Or sign in as Beta Tester →
+                </button>
+              )}
             </div>
 
             {error && (
