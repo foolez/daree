@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -25,6 +25,7 @@ type ChallengeCard = {
   your_streak: number;
   is_public?: boolean;
   is_completed?: boolean;
+  status?: string;
 };
 
 type FriendCircle = {
@@ -498,6 +499,7 @@ export function DashboardClient(props: {
   friends: FriendCircle[];
   globalTop5: GlobalLeader[];
 }) {
+  const router = useRouter();
   const intro = usePageIntroAnimation();
   const [joinOpen, setJoinOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(props.initialUnreadCount ?? 0);
@@ -513,10 +515,10 @@ export function DashboardClient(props: {
     return () => clearInterval(id);
   }, []);
 
-  const challenges = props.initialChallenges ?? [];
+  const [challenges, setChallenges] = useState<ChallengeCard[]>(
+    props.initialChallenges ?? []
+  );
   const hasChallenges = challenges.length > 0;
-
-  const pathname = usePathname();
 
   const midnight = new Date(nowMs);
   midnight.setHours(24, 0, 0, 0);
@@ -664,6 +666,29 @@ export function DashboardClient(props: {
     };
   }, [props.profile.id]);
 
+  useEffect(() => {
+    async function updateExpiredChallenges() {
+      const supabase = createSupabaseBrowserClient();
+      const today = new Date().toISOString().split("T")[0];
+      await supabase
+        .from("challenges")
+        .update({ status: "completed" })
+        .lte("end_date", today)
+        .eq("status", "active");
+
+      setChallenges((prev) =>
+        prev.map((c) => {
+          const ended = !!c.end_date && c.end_date < today;
+          if (ended || c.status === "completed") {
+            return { ...c, status: "completed", is_completed: true };
+          }
+          return c;
+        })
+      );
+    }
+    updateExpiredChallenges().catch(() => {});
+  }, []);
+
   async function triggerShameCheck() {
     // Runs on dashboard load. Creates missed-day notifications if after 8PM.
     if (new Date().getHours() < 20) return;
@@ -700,6 +725,38 @@ export function DashboardClient(props: {
   });
 
   const dayProgress = remainingSeconds / 86400;
+
+  async function openChallenge(challenge: ChallengeCard) {
+    const supabase = createSupabaseBrowserClient();
+    const today = new Date().toISOString().split("T")[0];
+    const isCompleted =
+      challenge.status === "completed" ||
+      challenge.is_completed === true ||
+      (!!challenge.end_date && challenge.end_date < today);
+
+    if (!isCompleted) {
+      router.push(`/challenge/${challenge.id}`);
+      return;
+    }
+
+    const { data: existingView } = await supabase
+      .from("wrapped_views")
+      .select("id")
+      .eq("challenge_id", challenge.id)
+      .eq("user_id", props.profile.id)
+      .maybeSingle();
+
+    if (existingView?.id) {
+      router.push(`/challenge/${challenge.id}`);
+      return;
+    }
+
+    await supabase.from("wrapped_views").insert({
+      challenge_id: challenge.id,
+      user_id: props.profile.id
+    });
+    router.push(`/challenge/${challenge.id}/wrapped`);
+  }
 
   function notificationCopy(n: NotificationItem) {
     const friendName = n.sender?.displayName || n.sender?.username || "A friend";
@@ -1026,22 +1083,22 @@ export function DashboardClient(props: {
             <div className="mt-3 grid gap-3">
               {challenges.map((c, i) => {
                 const { dayNumber, daysRemaining, progress } = getProgress(c);
-                const href = `/challenge/${c.id}`;
                 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                 const isValidId = c.id && typeof c.id === "string" && uuidRegex.test(c.id);
                 if (!isValidId && typeof window !== "undefined") {
                   console.warn("[Challenge card] Invalid challenge.id:", c.id, "title:", c.title);
                 }
                 return (
-                  <Link
+                  <button
                     key={c.id}
-                    href={href}
+                    type="button"
                     onClick={() => {
                       if (typeof window !== "undefined") {
-                        console.log("[Challenge card] Navigating to:", href, "challenge.id:", c.id, "valid:", isValidId);
+                        console.log("[Challenge card] Opening:", c.id, "valid:", isValidId);
                       }
+                      openChallenge(c).catch(() => {});
                     }}
-                    className="relative z-10 block cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
+                    className="relative z-10 block w-full cursor-pointer overflow-hidden rounded-2xl border border-[#1E1E1E] bg-[#111111] p-4 text-left transition-all duration-150 hover:bg-[#1A1A1A] active:scale-[0.97]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -1087,7 +1144,7 @@ export function DashboardClient(props: {
                       </span>
                       <span className="tabular-nums text-white">{daysRemaining} days left</span>
                     </div>
-                  </Link>
+                  </button>
                 );
               })}
             </div>

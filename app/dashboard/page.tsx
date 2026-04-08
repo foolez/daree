@@ -64,7 +64,8 @@ export default async function DashboardPage() {
           member_count: null as number | null,
           your_streak: m.current_streak ?? 0,
           is_public: c?.is_public ?? false,
-          is_completed: isCompleted
+          is_completed: isCompleted,
+          status: (c?.status ?? "active") as string
         };
       })
       .filter((c) => !!c.id) ?? [];
