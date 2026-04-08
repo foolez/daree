@@ -31,7 +31,9 @@ export default async function WrappedPage({
 
   const { data: challenge } = await supabase
     .from("challenges")
-    .select("id, title, duration_days, start_date, end_date, status, created_by")
+    .select(
+      "id, title, description, goal_type, duration_days, start_date, end_date, status, created_by, is_public"
+    )
     .eq("id", challengeId)
     .maybeSingle();
   if (!challenge) redirect("/dashboard");
@@ -110,9 +112,18 @@ export default async function WrappedPage({
 
   return (
     <WrappedClient
+      userId={user.id}
       challengeId={challenge.id}
       challengeTitle={challenge.title}
       durationDays={challenge.duration_days}
+      challenge={{
+        id: challenge.id,
+        title: challenge.title,
+        description: challenge.description ?? null,
+        goal_type: challenge.goal_type ?? "custom",
+        duration_days: challenge.duration_days,
+        is_public: challenge.is_public ?? false
+      }}
       yourRank={yourRank}
       memberCount={sortedMembers.length}
       yourPoints={yourPoints}

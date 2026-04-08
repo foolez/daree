@@ -512,6 +512,7 @@ export function ChallengeClient(props: {
       return;
     }
     router.push("/dashboard");
+    router.refresh();
   }
 
   async function handleLeaveChallenge() {
@@ -525,6 +526,7 @@ export function ChallengeClient(props: {
       return;
     }
     router.push("/dashboard");
+    router.refresh();
   }
 
   useEffect(() => {

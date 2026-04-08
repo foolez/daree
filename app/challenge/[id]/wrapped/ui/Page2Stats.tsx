@@ -13,7 +13,7 @@ function useCount(target: number) {
         setCount(target);
         clearInterval(id);
       } else setCount(i);
-    }, 40);
+    }, 50);
     return () => clearInterval(id);
   }, [target]);
   return count;

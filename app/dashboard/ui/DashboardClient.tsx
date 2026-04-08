@@ -688,6 +688,14 @@ export function DashboardClient(props: {
   }, [props.profile.id]);
 
   useEffect(() => {
+    function handleFocus() {
+      router.refresh();
+    }
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [router]);
+
+  useEffect(() => {
     async function updateExpiredChallenges() {
       const supabase = createSupabaseBrowserClient();
       const today = new Date().toISOString().split("T")[0];

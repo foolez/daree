@@ -11,9 +11,18 @@ import { Page5FunFacts } from "./Page5FunFacts";
 import { Page6Close } from "./Page6Close";
 
 export function WrappedClient(props: {
+  userId: string;
   challengeId: string;
   challengeTitle: string;
   durationDays: number;
+  challenge: {
+    id: string;
+    title: string;
+    description: string | null;
+    goal_type: string;
+    duration_days: number;
+    is_public: boolean;
+  };
   yourRank: number;
   memberCount: number;
   yourPoints: number;
@@ -37,24 +46,22 @@ export function WrappedClient(props: {
   useEffect(() => {
     if (currentPage !== 0) return;
     confetti({
-      particleCount: 150,
+      particleCount: 120,
       spread: 90,
       origin: { y: 0.6 },
       colors: ["#00FF88", "#FFFFFF", "#FF6B35"]
     });
-    const interval = setInterval(() => {
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-    }, 1000);
-    const timeout = setTimeout(() => clearInterval(interval), 3000);
+    const timeout = setTimeout(() => {
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+    }, 500);
     return () => {
-      clearInterval(interval);
       clearTimeout(timeout);
     };
   }, [currentPage]);
 
   useEffect(() => {
     if (currentPage < totalPages - 1) {
-      const timer = setTimeout(() => setCurrentPage((p) => p + 1), 5000);
+      const timer = setTimeout(() => setCurrentPage((p) => p + 1), 3000);
       return () => clearTimeout(timer);
     }
   }, [currentPage, totalPages]);
@@ -84,7 +91,13 @@ export function WrappedClient(props: {
       />,
       <Page4Winner key="p4" winner={props.winner} />,
       <Page5FunFacts key="p5" funFacts={props.funFacts} />,
-      <Page6Close key="p6" challengeId={props.challengeId} title={props.challengeTitle} />
+      <Page6Close
+        key="p6"
+        userId={props.userId}
+        challenge={props.challenge}
+        challengeId={props.challengeId}
+        title={props.challengeTitle}
+      />
     ],
     [props]
   );
@@ -130,7 +143,12 @@ export function WrappedClient(props: {
         X
       </button>
 
-      <div className="relative h-screen w-screen">{pages[currentPage]}</div>
+      <div
+        key={currentPage}
+        className="relative z-20 h-screen w-screen animate-[wrappedIn_200ms_cubic-bezier(0.16,1,0.3,1)]"
+      >
+        {pages[currentPage]}
+      </div>
 
       <button
         aria-label="Previous"
@@ -142,6 +160,18 @@ export function WrappedClient(props: {
         className="absolute inset-y-0 right-0 z-10 w-1/2"
         onClick={handleTapRight}
       />
+      <style jsx>{`
+        @keyframes wrappedIn {
+          from {
+            opacity: 0;
+            transform: translateX(14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
     </main>
   );
 }
