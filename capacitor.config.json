@@ -7,6 +7,13 @@
     "cleartext": true
   },
   "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "always",
+    "allowsLinkPreview": false,
+    "scrollEnabled": false,
+    "statusBarStyle": "lightContent",
+    "backgroundColor": "#0A0A0A"
+  },
   "plugins": {
     "SplashScreen": {
       "backgroundColor": "#0A0A0A",

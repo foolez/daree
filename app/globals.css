@@ -1,15 +1,37 @@
 html,
 body {
-  background: #0A0A0A !important;
+  background: #0a0a0a !important;
   min-height: 100vh;
   min-height: -webkit-fill-available;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 }
 
+* {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
 body {
   padding-top: env(safe-area-inset-top) !important;
   padding-bottom: env(safe-area-inset-bottom) !important;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 @tailwind base;
@@ -17,10 +39,10 @@ body {
 @tailwind utilities;
 
 :root {
-  --bg: #0A0A0A;
+  --bg: #0a0a0a;
   --surface: #111111;
-  --surface-hover: #1A1A1A;
-  --border: #1E1E1E;
+  --surface-hover: #1a1a1a;
+  --border: #1e1e1e;
   --primary: #00ff88;
   --danger: #ff4444;
   --warning: #ff8c00;
