@@ -1,9 +1,19 @@
-html,
+html {
+  background: #0a0a0a !important;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   background: #0a0a0a !important;
   min-height: 100vh;
   min-height: -webkit-fill-available;
-  overscroll-behavior: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -25,7 +35,6 @@ body {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  overscroll-behavior: none;
 }
 
 input,
