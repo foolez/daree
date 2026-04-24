@@ -23,5 +23,8 @@ export function createSupabaseBrowserClient() {
   if (hasValidPair) {
     return createBrowserClient(url!.trim(), key.trim());
   }
+  console.error(
+    "[Supabase] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing/invalid. Using fallback client."
+  );
   return createBrowserClient(FALLBACK_URL, FALLBACK_ANON_KEY);
 }
