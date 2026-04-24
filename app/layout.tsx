@@ -45,6 +45,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+        />
+        <meta name="theme-color" content="#0A0A0A" />
         <link
           rel="preconnect"
           href={new URL(appBaseUrl).origin}
@@ -52,7 +59,7 @@ export default function RootLayout({
         />
         <link rel="dns-prefetch" href={new URL(appBaseUrl).origin} />
       </head>
-      <body className="min-h-screen bg-slate-950 text-slate-50">
+      <body className="main-content min-h-screen bg-slate-950 text-slate-50">
         <NativePwaClient />
         <ToastProvider>{children}</ToastProvider>
       </body>

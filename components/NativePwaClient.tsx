@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
+import { StatusBar, Style } from "@capacitor/status-bar";
 
 /**
  * Hides the native Capacitor splash when the web app has finished its first load
@@ -19,6 +20,9 @@ export function NativePwaClient() {
     if (!Capacitor.isNativePlatform()) {
       return;
     }
+
+    void StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    void StatusBar.setBackgroundColor({ color: "#0A0A0A" }).catch(() => {});
 
     const hide = () => {
       window.setTimeout(() => {

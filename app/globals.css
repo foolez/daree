@@ -15,17 +15,36 @@
   --text-tertiary: #3A3A3A;
 }
 
+html,
+body {
+  background: #0A0A0A;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   @apply antialiased;
-  background: var(--bg);
   color: var(--text-primary);
   font-size: 15px;
   line-height: 1.5;
 }
 
-
 html {
   scroll-behavior: smooth;
+}
+
+.bottom-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+}
+
+.main-content {
+  padding-top: env(safe-area-inset-top);
 }
 
 button,
