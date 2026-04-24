@@ -2,9 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function BottomNav(props: { profile: { avatarUrl: string | null; username: string } }) {
   const pathname = usePathname();
+  const [usePortal, setUsePortal] = useState(false);
+
+  // After hydration, render nav on document.body so it sits above #app-scroll-root (iOS/WKWebView
+  // otherwise steals touches on the fixed bar inside an overflow scroller).
+  useLayoutEffect(() => {
+    setUsePortal(true);
+  }, []);
+
   const onHome = pathname === "/dashboard";
   const onExplore = pathname === "/explore";
   const onRecord = pathname === "/record";
@@ -13,11 +23,12 @@ export function BottomNav(props: { profile: { avatarUrl: string | null; username
 
   const iconColor = (active: boolean) => (active ? "white" : "#6B6B6B");
 
-  return (
+  const nav = (
     <nav
-      className="bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t border-[#1E1E1E] backdrop-blur-[16px]"
+      className="bottom-nav fixed bottom-0 left-0 right-0 z-[200] border-t border-[#1E1E1E] backdrop-blur-[16px]"
       style={{
-        background: "rgba(10,10,10,0.85)"
+        background: "rgba(10,10,10,0.85)",
+        pointerEvents: "auto"
       }}
     >
       <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ height: 64 }}>
@@ -128,4 +139,9 @@ export function BottomNav(props: { profile: { avatarUrl: string | null; username
       </div>
     </nav>
   );
+
+  if (usePortal && typeof document !== "undefined") {
+    return createPortal(nav, document.body);
+  }
+  return nav;
 }
