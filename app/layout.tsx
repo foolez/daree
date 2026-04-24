@@ -63,7 +63,10 @@ export default function RootLayout({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 99999
+            zIndex: 99999,
+            // Must not capture touches/scroll: if the remove script runs late, this overlay
+            // otherwise blocks the entire app (Capacitor / Next hydration).
+            pointerEvents: "none"
           }}
         >
           <img
@@ -85,12 +88,23 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var s = document.getElementById('splash');
-        if(s){s.style.transition='opacity 0.3s';s.style.opacity='0';setTimeout(function(){s.remove()},300)}
-      }, 300);
-    });
+    (function () {
+      function removeSplash() {
+        setTimeout(function () {
+          var s = document.getElementById('splash');
+          if (s) {
+            s.style.transition = 'opacity 0.3s';
+            s.style.opacity = '0';
+            setTimeout(function () { s.remove(); }, 300);
+          }
+        }, 300);
+      }
+      if (document.readyState === 'complete') {
+        removeSplash();
+      } else {
+        window.addEventListener('load', removeSplash, { once: true });
+      }
+    })();
   `
           }}
         />

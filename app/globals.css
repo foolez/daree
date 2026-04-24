@@ -1,6 +1,12 @@
-html,
+html {
+  background: #0a0a0a;
+  overflow-x: hidden;
+  height: 100%;
+}
+
 body {
   background: #0a0a0a;
+  min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
