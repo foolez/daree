@@ -54,23 +54,16 @@ export function LoginClient() {
 
     setEmail(testEmail);
     setPassword(testPassword);
-    setStatus("loading");
-    setError(null);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // Try sign in first
+      const { error } = await supabase.auth.signInWithPassword({
         email: testEmail,
         password: testPassword
       });
 
-      if (!signInError) {
-        console.log("[Auth] Beta Tester sign-in success, redirecting");
-        window.location.href = redirectTo;
-        return;
-      }
-
-      if (signInError.message.includes("Invalid login credentials")) {
-        console.log("[Auth] Beta Tester account missing, attempting sign-up");
+      if (error) {
+        // If account doesn't exist, create it
         const { error: signUpError } = await supabase.auth.signUp({
           email: testEmail,
           password: testPassword,
@@ -78,40 +71,30 @@ export function LoginClient() {
             data: {
               username: "betatester",
               display_name: "Beta Tester"
-            },
-            emailRedirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(
-              redirectTo
-            )}`
+            }
           }
         });
 
         if (signUpError) {
-          setStatus("error");
-          setError(signUpError.message);
+          alert("Beta login failed: " + signUpError.message);
           return;
         }
 
-        const { error: signInAgain } = await supabase.auth.signInWithPassword({
+        // Try sign in again after signup
+        const { error: retryError } = await supabase.auth.signInWithPassword({
           email: testEmail,
           password: testPassword
         });
 
-        if (signInAgain) {
-          setStatus("error");
-          setError(signInAgain.message);
+        if (retryError) {
+          alert("Beta login failed: " + retryError.message);
           return;
         }
-
-        console.log("[Auth] Beta Tester created and signed in, redirecting");
-        window.location.href = redirectTo;
-        return;
       }
 
-      setStatus("error");
-      setError(signInError.message);
+      window.location.href = "/dashboard";
     } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : "Unknown error");
+      alert("Error: " + (err as Error).message);
     }
   }
 
@@ -264,8 +247,7 @@ export function LoginClient() {
                 <button
                   type="button"
                   onClick={handleBetaTesterLogin}
-                  disabled={status === "loading"}
-                  className="mt-2 w-full text-left text-[12px] text-[#6B6B6B] transition-colors hover:underline disabled:opacity-50"
+                  className="mt-2 w-full text-left text-[12px] text-[#6B6B6B] transition-colors hover:underline"
                 >
                   Or sign in as Beta Tester →
                 </button>
