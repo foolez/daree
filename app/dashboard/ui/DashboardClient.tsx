@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -399,9 +399,9 @@ function getProgress(challenge: ChallengeCard) {
 
 function usePageIntroAnimation() {
   const [ready, setReady] = useState(false);
-  useMemo(() => {
-    const t = setTimeout(() => setReady(true), 40);
-    return () => clearTimeout(t);
+  useEffect(() => {
+    const t = window.setTimeout(() => setReady(true), 40);
+    return () => window.clearTimeout(t);
   }, []);
   return ready;
 }

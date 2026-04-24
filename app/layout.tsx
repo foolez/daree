@@ -50,7 +50,7 @@ export default function RootLayout({
         />
         <link rel="dns-prefetch" href={new URL(appBaseUrl).origin} />
       </head>
-      <body className="min-h-screen bg-slate-950 text-slate-50">
+      <body className="bg-slate-950 text-slate-50">
         <NativePwaClient />
         <ToastProvider>{children}</ToastProvider>
       </body>
