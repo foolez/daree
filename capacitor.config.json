@@ -6,5 +6,12 @@
     "url": "https://daree.vercel.app",
     "cleartext": true
   },
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "SplashScreen": {
+      "backgroundColor": "#0A0A0A",
+      "showSpinner": false,
+      "launchAutoHide": false
+    }
+  }
 }
