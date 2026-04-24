@@ -17,9 +17,7 @@ export function BottomNav(props: { profile: { avatarUrl: string | null; username
     <nav
       className="bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t border-[#1E1E1E] backdrop-blur-[16px]"
       style={{
-        background: "rgba(10,10,10,0.85)",
-        height: "calc(64px + env(safe-area-inset-bottom, 0px) + 8px)",
-        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)"
+        background: "rgba(10,10,10,0.85)"
       }}
     >
       <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ height: 64 }}>
