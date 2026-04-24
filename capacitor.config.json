@@ -8,9 +8,7 @@
   },
   "bundledWebRuntime": false,
   "ios": {
-    "contentInset": "always",
     "allowsLinkPreview": false,
-    "statusBarStyle": "lightContent",
     "backgroundColor": "#0A0A0A"
   },
   "plugins": {

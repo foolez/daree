@@ -1,46 +1,15 @@
-html {
-  background: #0a0a0a !important;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-}
-
+html,
 body {
-  background: #0a0a0a !important;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
-  overflow-y: auto;
+  background: #0a0a0a;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-* {
-  -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
 }
 
 input,
 textarea,
 select {
   font-size: 16px !important;
-}
-
-body {
-  padding-top: env(safe-area-inset-top) !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-}
-
-input,
-textarea {
-  -webkit-user-select: auto;
-  user-select: auto;
 }
 
 @tailwind base;
