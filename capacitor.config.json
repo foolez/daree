@@ -9,7 +9,10 @@
   "bundledWebRuntime": false,
   "ios": {
     "allowsLinkPreview": false,
-    "backgroundColor": "#0A0A0A"
+    "backgroundColor": "#0A0A0A",
+    "scrollEnabled": true,
+    "contentInset": "scrollableAxes",
+    "zoomEnabled": false
   },
   "plugins": {
     "SplashScreen": {

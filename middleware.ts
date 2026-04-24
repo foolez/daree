@@ -1,14 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { getPublicSupabaseEnv } from "@/lib/env";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/create",
   "/record",
   "/challenge",
-  "/profile",
-  "/notifications",
-  "/my-vlogs"
+  "/profile"
 ];
 
 function isProtectedPath(pathname: string) {
@@ -18,32 +17,42 @@ function isProtectedPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public assets and public routes.
-  if (!isProtectedPath(pathname)) return NextResponse.next();
+  if (!isProtectedPath(pathname)) {
+    return NextResponse.next();
+  }
 
   const response = NextResponse.next();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  let supabase;
+  try {
+    const { url, anon } = getPublicSupabaseEnv();
+    supabase = createServerClient(url, anon, {
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: CookieOptions) {
           response.cookies.set({ name, value, ...options });
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: CookieOptions) {
           response.cookies.set({ name, value: "", ...options, maxAge: 0 });
         }
       }
-    }
-  );
+    });
+  } catch (err) {
+    console.error("[middleware] Supabase config", err);
+    return new NextResponse("Service configuration error", { status: 503 });
+  }
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let user: { id: string } | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error) {
+      user = data.user;
+    }
+  } catch (e) {
+    console.error("[middleware] getUser", e);
+  }
 
   if (!user) {
     const loginUrl = request.nextUrl.clone();
@@ -56,6 +65,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  matcher: ["/((?!api/|_next/|_vercel/|favicon|sw\\.js).*)"]
 };
-

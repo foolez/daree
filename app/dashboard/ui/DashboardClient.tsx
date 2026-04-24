@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -536,7 +536,7 @@ export function DashboardClient(props: {
     props.initialNotifications ?? []
   );
 
-  async function syncUnreadCount() {
+  const syncUnreadCount = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
     const primary = await supabase
       .from("notifications")
@@ -557,7 +557,7 @@ export function DashboardClient(props: {
     } else {
       setUnreadCount(0);
     }
-  }
+  }, [props.profile.id]);
   async function nudgeFriend(friend: FriendCircle) {
     if (nudgedById[friend.userId]) return;
     // Optimistic UI for instant, haptic-like feedback.
@@ -681,11 +681,11 @@ export function DashboardClient(props: {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [props.profile.id]);
+  }, [props.profile.id, syncUnreadCount]);
 
   useEffect(() => {
     syncUnreadCount().catch(() => {});
-  }, [props.profile.id]);
+  }, [syncUnreadCount]);
 
   useEffect(() => {
     function handleFocus() {
@@ -821,8 +821,8 @@ export function DashboardClient(props: {
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
       <div
-        className={`mx-auto min-h-screen max-w-md px-5 pb-28 pt-6 transition-all duration-500 ${
-          intro ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+        className={`mx-auto min-h-screen max-w-md px-5 pb-28 pt-6 transition-opacity duration-500 ${
+          intro ? "opacity-100" : "opacity-0"
         }`}
       >
         <header className="flex items-center justify-between">
