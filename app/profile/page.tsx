@@ -84,10 +84,9 @@ export default async function ProfilePage() {
   }
 
   const friendIdList = Array.from(friendIds);
-  const { data: friendUsers } = await supabase
-    .from("users")
-    .select("id, username, display_name, avatar_url")
-    .in("id", friendIdList);
+  const { data: friendUsers } = friendIdList.length
+    ? await supabase.from("users").select("id, username, display_name, avatar_url").in("id", friendIdList)
+    : { data: [] as { id: string; username: string; display_name: string | null; avatar_url: string | null }[] };
 
   const friends = (friendUsers ?? []).map((u: any) => ({
     userId: u.id,
@@ -104,10 +103,9 @@ export default async function ProfilePage() {
     .limit(10);
 
   const cids = [...new Set((recentVlogs ?? []).map((v: any) => v.challenge_id).filter(Boolean))];
-  const { data: challengeRows } = await supabase
-    .from("challenges")
-    .select("id, title")
-    .in("id", cids);
+  const { data: challengeRows } = cids.length
+    ? await supabase.from("challenges").select("id, title").in("id", cids)
+    : { data: [] as { id: string; title: string }[] };
 
   const challengeTitles = new Map<string, string>();
   for (const c of challengeRows ?? []) {
@@ -130,10 +128,9 @@ export default async function ProfilePage() {
     .eq("status", "pending");
 
   const fromIds = (requestRows ?? []).map((r: any) => r.sender_id);
-  const { data: fromUsers } = await supabase
-    .from("users")
-    .select("id, username, display_name, avatar_url")
-    .in("id", fromIds);
+  const { data: fromUsers } = fromIds.length
+    ? await supabase.from("users").select("id, username, display_name, avatar_url").in("id", fromIds)
+    : { data: [] as { id: string; username: string; display_name: string | null; avatar_url: string | null }[] };
 
   const fromById = new Map((fromUsers ?? []).map((u: any) => [u.id, u]));
   const pendingRequests = (requestRows ?? []).map((r: any) => {

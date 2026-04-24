@@ -100,16 +100,20 @@ export default async function DashboardPage() {
   }
 
   const friendIdList = Array.from(friendIds);
-  const { data: friendUsers } = await supabase
-    .from("users")
-    .select("id,username,display_name,avatar_url")
-    .in("id", friendIdList);
+  const { data: friendUsers } = friendIdList.length
+    ? await supabase
+        .from("users")
+        .select("id,username,display_name,avatar_url")
+        .in("id", friendIdList)
+    : { data: [] as { id: string; username: string; display_name: string | null; avatar_url: string | null }[] };
 
-  const { data: friendVlogs } = await supabase
-    .from("vlogs")
-    .select("user_id")
-    .in("user_id", friendIdList)
-    .gte("created_at", todayStartIso);
+  const { data: friendVlogs } = friendIdList.length
+    ? await supabase
+        .from("vlogs")
+        .select("user_id")
+        .in("user_id", friendIdList)
+        .gte("created_at", todayStartIso)
+    : { data: [] as { user_id: string }[] };
 
   const postedFriendIds = new Set<string>(
     (friendVlogs ?? []).map((v: any) => v.user_id as string)
