@@ -6,14 +6,29 @@ import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar, Style } from "@capacitor/status-bar";
 
 /**
- * Hides the native Capacitor splash when the web app has finished its first load
- * and registers the PWA service worker in production.
+ * Hides the native Capacitor splash when the web app has finished its first load.
+ * Unregisters any legacy service workers and clears our caches so users never need
+ * to manually clear Safari / site data after a bad deploy.
  */
 export function NativePwaClient() {
   useEffect(() => {
-    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
-      void navigator.serviceWorker.register("/sw.js");
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return;
     }
+    void (async () => {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) {
+        await r.unregister();
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        for (const k of keys) {
+          if (k.startsWith("daree-")) {
+            await caches.delete(k);
+          }
+        }
+      }
+    })();
   }, []);
 
   useEffect(() => {
