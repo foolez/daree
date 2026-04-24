@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full max-h-full overflow-hidden">
       <head>
         <meta
           name="viewport"
@@ -50,9 +50,12 @@ export default function RootLayout({
         />
         <link rel="dns-prefetch" href={new URL(appBaseUrl).origin} />
       </head>
-      <body className="bg-slate-950 text-slate-50">
-        <NativePwaClient />
-        <ToastProvider>{children}</ToastProvider>
+      <body className="m-0 h-full max-h-full overflow-hidden bg-slate-950 text-slate-50">
+        {/* TestFlight / WKWebView: window rarely scrolls; a single full-viewport scroller is reliable. */}
+        <div id="app-scroll-root" className="app-scroll-root">
+          <NativePwaClient />
+          <ToastProvider>{children}</ToastProvider>
+        </div>
       </body>
     </html>
   );

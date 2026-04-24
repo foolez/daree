@@ -16,6 +16,11 @@ final class BridgeViewController: CAPBridgeViewController {
         applyScrollTuning()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        applyScrollTuning()
+    }
+
     private func applyScrollTuning() {
         guard let wk = webView else { return }
         let sv = wk.scrollView
@@ -23,6 +28,7 @@ final class BridgeViewController: CAPBridgeViewController {
         sv.bounces = true
         sv.alwaysBounceVertical = true
         sv.isDirectionalLockEnabled = false
+        wk.isUserInteractionEnabled = true
         if #available(iOS 12.0, *) {
             sv.contentInsetAdjustmentBehavior = .scrollableAxes
         }
