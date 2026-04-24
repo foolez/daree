@@ -1,14 +1,14 @@
+/* Use normal document (window) scrolling — on iOS, making `body` the scroll
+   container (overflow-y: auto) + height: 100% on html often breaks pan/scroll. */
 html {
   background: #0a0a0a;
   overflow-x: hidden;
-  height: 100%;
 }
 
 body {
   background: #0a0a0a;
-  min-height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  min-height: 100%;
   -webkit-overflow-scrolling: touch;
 }
 

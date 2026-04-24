@@ -51,63 +51,8 @@ export default function RootLayout({
         <link rel="dns-prefetch" href={new URL(appBaseUrl).origin} />
       </head>
       <body className="min-h-screen bg-slate-950 text-slate-50">
-        <div
-          id="splash"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            background: "#0A0A0A",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 99999,
-            // Must not capture touches/scroll: if the remove script runs late, this overlay
-            // otherwise blocks the entire app (Capacitor / Next hydration).
-            pointerEvents: "none"
-          }}
-        >
-          <img
-            src="/logo.png"
-            alt="Daree"
-            width={80}
-            height={80}
-            style={{ animation: "pulse 1.5s ease-in-out infinite" }}
-          />
-        </div>
-        <style
-          dangerouslySetInnerHTML={{
-            __html:
-              "@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.95)}}"
-          }}
-        />
         <NativePwaClient />
         <ToastProvider>{children}</ToastProvider>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-    (function () {
-      function removeSplash() {
-        setTimeout(function () {
-          var s = document.getElementById('splash');
-          if (s) {
-            s.style.transition = 'opacity 0.3s';
-            s.style.opacity = '0';
-            setTimeout(function () { s.remove(); }, 300);
-          }
-        }, 300);
-      }
-      if (document.readyState === 'complete') {
-        removeSplash();
-      } else {
-        window.addEventListener('load', removeSplash, { once: true });
-      }
-    })();
-  `
-          }}
-        />
       </body>
     </html>
   );
